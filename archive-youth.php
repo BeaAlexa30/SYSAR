@@ -7,56 +7,22 @@ if (!isset($_SESSION['username'])) {
 
 include('database.php');
 
-// Fetch the next available res_id (Auto-Increment Logic)
-$res_id_sql = "SELECT MAX(res_id) AS max_res_id FROM accepted_members";
-$res_id_result = mysqli_query($conn, $res_id_sql);
-$row = mysqli_fetch_assoc($res_id_result);
-$next_res_id = $row['max_res_id'] ? $row['max_res_id'] + 1 : 2025001;
-
-// Handle "Accept" and "archive" actions
+// Handle "retrieve" action
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $action = $_GET['action'];
     $id = $_GET['id'];
 
-    if ($action == 'accept') {
-        $insert_sql = "INSERT INTO accepted_members (members_id, res_id) VALUES ('$id', '$next_res_id')";
-        if (mysqli_query($conn, $insert_sql)) {
-            $update_sql = "UPDATE skmembers_queue SET status = 1 WHERE id = '$id'";
-            mysqli_query($conn, $update_sql);
-        }
-    } elseif ($action == 'archive') {
-        // Mark as archived instead of deleting
-        $update_archive_sql = "UPDATE accepted_members SET archive = 'Yes' WHERE members_id = '$id'";
-        
-        if (mysqli_query($conn, $update_archive_sql)) {
+    if ($action == 'retrieve') {
+        $update_retrieve_sql = "UPDATE accepted_members SET archive = 'No' WHERE members_id = '$id'";
+
+        if (mysqli_query($conn, $update_retrieve_sql)) {
             $update_status_sql = "UPDATE skmembers_queue SET status = 1 WHERE id = '$id'";
             mysqli_query($conn, $update_status_sql);
         }
-    
-        header("Location: pending_reqID.php");
+
+        header("Location: archive-youth.php");
         exit();
-    } if ($action == 'delete') {
-        // Delete from both tables
-        $delete_accepted_sql = "DELETE FROM accepted_members WHERE members_id = '$id'";
-        $delete_queue_sql = "DELETE FROM skmembers_queue WHERE id = '$id'";
-     
-        mysqli_query($conn, $delete_accepted_sql);
-        mysqli_query($conn, $delete_queue_sql);
-    
-        // Reorder IDs in skmembers_queue
-        mysqli_query($conn, "SET @num := 0");
-        mysqli_query($conn, "UPDATE skmembers_queue SET id = @num := @num + 1 ORDER BY id");
-        mysqli_query($conn, "ALTER TABLE skmembers_queue AUTO_INCREMENT = 1");
-    
-        // Reorder IDs in accepted_members
-        mysqli_query($conn, "SET @num := 0");
-        mysqli_query($conn, "UPDATE accepted_members SET id = @num := @num + 1, members_id = @num ORDER BY id");
-        mysqli_query($conn, "ALTER TABLE accepted_members AUTO_INCREMENT = 1");
-    
-        // Redirect back
-        header("Location: youth_manage.php");
-        exit();
-    }    
+    }
 }
 
 // Option 2: Update Archive for Age >= 31
@@ -67,28 +33,28 @@ $update_archive_sql =
     WHERE q.age >= 31";
 mysqli_query($conn, $update_archive_sql);
 
-// Fetch accepted members and unarchived members
-$accepted_sql = 
+// Fetch archived members only
+$archived_sql = 
     "SELECT 
         a.res_id, 
         q.id,
         q.first_name, 
-        q.middle_name,
+        q.middle_name, 
         q.last_name, 
         q.gender, 
         q.age, 
         q.filename 
     FROM accepted_members a
     JOIN skmembers_queue q ON a.members_id = q.id
-    WHERE a.archive = 'No'
-    AND q.age BETWEEN 1 AND 30
+    WHERE a.archive = 'Yes'
 ";
-$accepted_result = mysqli_query($conn, $accepted_sql);
+$archived_result = mysqli_query($conn, $archived_sql);
 
-if (!$accepted_result) {
-    die("Error fetching accepted members: " . mysqli_error($conn));
+if (!$archived_result) {
+    die("Error fetching archived members: " . mysqli_error($conn));
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -198,7 +164,7 @@ if (!$accepted_result) {
                 </tr>
             </thead>
             <tbody>
-                <?php while ($row = mysqli_fetch_assoc($accepted_result)) : ?>
+                <?php while ($row = mysqli_fetch_assoc($archived_result)) : ?>
                     <tr class="resident-row">
                         <td><?php echo htmlspecialchars($row['res_id']); ?></td>
                         <td><?php echo htmlspecialchars($row['first_name'] . " " . $row['middle_name'] . " " . $row['last_name']); ?></td>
@@ -215,12 +181,12 @@ if (!$accepted_result) {
                             ?>
                         </td>
                         <td class="action-container">
-                        <a href="youth_manage.php?action=archive&id=<?php echo htmlspecialchars($row['id']); ?>" class="btn btn-warning btn-icon" title="Archive">
-                                <i class="fa fa-archive"></i>
+                        <a href="archive-youth.php?action=retrieve&id=<?php echo htmlspecialchars($row['id']); ?>" class="btn btn-warning btn-icon" title="Retrieve">
+                                <i class="fa fa-undo"></i>
                             </a>
-                            <!-- <a href="#" class="btn btn-danger btn-icon delete-btn" data-id="<?php echo htmlspecialchars($row['id']); ?>" title="Delete">
+                            <a href="#" class="btn btn-danger btn-icon delete-btn" data-id="<?php echo htmlspecialchars($row['id']); ?>" title="Delete">
                                 <i class="fa fa-trash"></i>
-                            </a> -->
+                            </a>
                         </td>
                     </tr>
                 <?php endwhile; ?>
@@ -239,7 +205,6 @@ if (!$accepted_result) {
             });
         </script>
 
-        <!-- ARCHIVE & DELETE BUTTON FUNCTION -->
         <script>
             document.addEventListener("DOMContentLoaded", function () {
                 document.querySelectorAll(".delete-btn").forEach(button => {
@@ -263,32 +228,9 @@ if (!$accepted_result) {
                     });
                 });
             });
-
-            // Handle Archive Button
-        document.querySelectorAll(".archive-btn").forEach(button => {
-            button.addEventListener("click", function (event) {
-                event.preventDefault();
-                let memberId = this.getAttribute("data-id");
-
-                Swal.fire({
-                    title: "Archive this resident?",
-                    text: "This will move the resident to archive.",
-                    icon: "info",
-                    showCancelButton: true,
-                    confirmButtonColor: "#ffc107",
-                    cancelButtonColor: "#3085d6",
-                    confirmButtonText: "Yes, archive it!"
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = `youth_manage.php?action=archive&id=${memberId}`;
-                    }
-                });
-            });
-        });
         </script>
-
-
     </main>
+
 </body>
 
 <?php include 'footer.php'; ?>

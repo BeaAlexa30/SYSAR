@@ -1,0 +1,20 @@
+TO-DO LIST
+
+AS OF MAY 7, 2025
+
+Remove delete button (youth_manage.php) - DONE
+Automatic delete of masterlist if marereach nya 30 age above - DONE
+ (youth_manage.php) - DONE
+
+Archive resident member
+
+ (accepted_assistance.php) -
+
+
+
+GRAPH FOR LEVEL OF SCHOOL PER YOUTH
+GRAPH FOR AGE DISTRIBUTION ()
+Ano lang, pag separate lang namin sa graph yung daycare, elem, jsh, shs, tsaka college
+
+Notify for confirmation thru email
+*optional sa number (user)

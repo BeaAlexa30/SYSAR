@@ -130,15 +130,24 @@
                         <li class="nav-item">
                             <a class="nav-link <?= $current_page == 'login.php' ? 'active' : ''; ?>" href="login.php">LOGIN</a>
                         </li>
+
+
+                        <!-- YOUTH MANAGE -->
                     <?php else : ?>
                         <?php if ($current_page == 'dashboard.php') : ?>
-                        <?php elseif (in_array($current_page, ['youth_manage.php', 'pending_reqID.php', 'youth_archive.php'])) : ?>
+                        <?php elseif (in_array($current_page, ['youth_manage.php', 'pending_reqID.php', 'youth_archive.php,archive-youth.php'])) : ?>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page == 'youth_manage.php' ? 'fw-bold text-primary' : ''; ?>" href="youth_manage.php">MASTERLIST</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page == 'pending_reqID.php' ? 'fw-bold text-primary' : ''; ?>" href="pending_reqID.php">PENDING</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?= $current_page == 'archive-youth.php' ? 'fw-bold text-primary' : ''; ?>" href="archive-youth.php">ARCHIVE</a>
+                            </li>
+
+
+
                         <?php elseif (in_array($current_page, ['doc_to_print.php', 'history_docs.php'])) : ?>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page == 'doc_to_print.php' ? 'fw-bold text-primary' : ''; ?>" href="doc_to_print.php">PENDING</a>
