@@ -1,103 +1,139 @@
 <?php
-// Include database connection
 include('database.php');
+session_start();
+if (!isset($_SESSION['username'])) {
+    header('Location: login.php');
+    exit;
+}
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $res_id = $_POST['res_id'];
-    $year_level = $_POST['year_level'];
+$swalType = "";
+$swalMessage = "";
+$redirectUrl = ""; // empty by default
 
-    // Check if res_id exists in accepted_members table
-    $check_sql = "SELECT * FROM accepted_members WHERE res_id = '$res_id'";
-    $result = $conn->query($check_sql);
-
-    if ($result->num_rows > 0) {
-        // Proceed with file upload if res_id exists
-        $target_dir = "uploads/";
-        if (!is_dir($target_dir)) {
-            mkdir($target_dir, 0777, true);
-        }
-
-        $ccog_filename = $target_dir . basename($_FILES["ccog_filename"]["name"]);
-        $cor_filename = $target_dir . basename($_FILES["cor_filename"]["name"]);
-
-        if (move_uploaded_file($_FILES["ccog_filename"]["tmp_name"], $ccog_filename) &&
-            move_uploaded_file($_FILES["cor_filename"]["tmp_name"], $cor_filename)) {
-            
-            $sql = "INSERT INTO assistance_req (res_id, year_level, ccog_filename, cor_filename) 
-                    VALUES ('$res_id', '$year_level', '$ccog_filename', '$cor_filename')";
-            
-            if ($conn->query($sql) === TRUE) {
-                echo "<script>alert('Record added successfully');</script>";
-            } else {
-                echo "<script>alert('Error: " . $conn->error . "');</script>";
-            }
-        } else {
-            echo "<script>alert('File upload failed.');</script>";
-        }
+// Handle retrieval
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['retrieve_res_id'])) {
+    $res_id = $_POST['retrieve_res_id'];
+    $sqlRetrieve = "UPDATE accepted_for_assistance SET status = 1 WHERE res_id = '$res_id'";
+    if ($conn->query($sqlRetrieve) === TRUE) {
+        $swalType = "success";
+        $swalMessage = "Resident retrieved successfully!";
+        $redirectUrl = "accepted_assistance.php"; // redirect after success retrieve
     } else {
-        // Show alert if res_id doesn't exist
-        echo "<script>alert('The Resident ID you entered does not exist. Please make a request for a resident ID first. Thank you!');</script>";
+        $swalType = "error";
+        $swalMessage = "Error retrieving resident: " . $conn->error;
     }
 }
+
+// Handle deletion
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_res_id'])) {
+    $res_id = $_POST['delete_res_id'];
+
+    // Start transaction (optional but recommended)
+    $conn->begin_transaction();
+
+    try {
+        // Delete from accepted_for_assistance
+        $sqlDeleteAccepted = "DELETE FROM accepted_for_assistance WHERE res_id = '$res_id'";
+        if (!$conn->query($sqlDeleteAccepted)) {
+            throw new Exception("Error deleting from accepted_for_assistance: " . $conn->error);
+        }
+
+        // Delete from assistance_req
+        $sqlDeleteAssistanceReq = "DELETE FROM assistance_req WHERE res_id = '$res_id'";
+        if (!$conn->query($sqlDeleteAssistanceReq)) {
+            throw new Exception("Error deleting from assistance_req: " . $conn->error);
+        }
+
+        // Commit transaction if both deletes succeed
+        $conn->commit();
+
+        $swalType = "success";
+        $swalMessage = "Resident deleted successfully from both tables!";
+    } catch (Exception $e) {
+        // Rollback transaction on error
+        $conn->rollback();
+
+        $swalType = "error";
+        $swalMessage = $e->getMessage();
+    }
+}
+
+// Fetch archived residents
+$sqlArchived = "SELECT aa.id AS accepted_id, aa.res_id, sq.first_name, sq.last_name, aa.year_level 
+                FROM accepted_for_assistance aa
+                JOIN accepted_members am ON aa.res_id = am.res_id
+                JOIN skmembers_queue sq ON am.members_id = sq.id
+                WHERE aa.status = 0";
+$resultArchived = $conn->query($sqlArchived);
+
 $conn->close();
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assistance Request Form</title>
+    <title>Archived Residents</title>
     <link rel="icon" type="image/jpg" href="SKFILES/Org_Chart_and_Logos/SK_LOGO.jpg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body {
-            background: url('PICTURES/home_bg.jpg') no-repeat center center fixed;
-            background-size: cover;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
-            font-family: Arial, sans-serif;
-            padding-top: 100px
+            padding-top: 100px;
+            margin-left: 200px;
+            transition: margin-left 0.3s;
         }
-        .required {
-            color: red;
-            font-weight: bold;
-            margin-right: 4px;
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .form-container {
-            background-color: rgba(248, 249, 250, 0.79);
-            backdrop-filter: blur(3px);
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 500px;
+        h1 {
+            margin-left: 5px;
+            font-size: 24px;
+            color: #00205b;
         }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: rgb(63, 112, 234);
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
         }
-        input, select {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #00205b;
+            color: white;
         }
         button {
-            width: 100%;
-            padding: 10px;
-            background: red;
-            color: white;
-            border: none;   
-            border-radius: 10px;
+            padding: 8px 15px;
+            margin: 5px;
             cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: background-color 0.3s;
         }
-        button:hover {
-            background: #831903;
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 35%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+            color: gray;
+        }
+        #searchArchived {
+            padding-left: 35px;
         }
     </style>
 </head>
@@ -105,50 +141,131 @@ $conn->close();
 <?php include 'navbar.php'; ?>
 
 <body>
-    <div class="container d-flex justify-content-center align-items-center">
-        <div class="form-container">
-            <h2 class="text-center" style = "color: red;"><b>Assistance Request</b></h2>
-            <form method="POST" enctype="multipart/form-data">
-                <label for="res_id"><span class="required">*</span>Resident ID</label>
-                <input type="text" name="res_id" class="form-control" required>
-                
-                <label for="year_level"><span class="required">*</span>Year Level</label>
-                <select name="year_level" class="form-control" required>
-                <option value="" disabled selected>Select Year Level</option>
-                    <option value="Kinder">Kinder</option>
-                    <option value="Grade 1">Grade 1</option>
-                    <option value="Grade 2">Grade 2</option>
-                    <option value="Grade 3">Grade 3</option>
-                    <option value="Grade 4">Grade 4</option>
-                    <option value="Grade 5">Grade 5</option>
-                    <option value="Grade 6">Grade 6</option>
-                    <option value="Grade 7">Grade 7</option>
-                    <option value="Grade 8">Grade 8</option>
-                    <option value="Grade 9">Grade 9</option>
-                    <option value="Grade 10">Grade 10</option>
-                    <option value="Grade 10">Grade 11</option>
-                    <option value="Grade 10">Grade 12</option>
-                    <option value="1st Year College">1st Year College</option>
-                    <option value="2nd Year College">2nd Year College</option>
-                    <option value="3rd Year College">3rd Year College</option>
-                    <option value="4th Year College">4th Year College</option>
-                </select>
-                
-                <label for="ccog_filename"><span class="required">*</span>Certified True Copy of Grades File</label>
-                <input type="file" name="ccog_filename" class="form-control" required>
-                
-                <label for="cor_filename"><span class="required">*</span>Certificate of Registration File</label>
-                <input type="file" name="cor_filename" class="form-control" required>
-                
-                <button type="submit">Submit</button>
-            </form>
-        </div>
+<main>
+<div style="width: 80%; display: flex; justify-content: space-between; align-items: center;">
+    <h1>Archived Residents</h1>
+    <div class="search-container" style="position: relative; width: 30%; display: flex; align-items: center;">
+        <i class="fa fa-magnifying-glass search-icon"></i>
+        <input type="text" id="searchArchived" class="search-input form-control text-center" placeholder="Search Resident Name or Year Level">
     </div>
+</div>
 
-    <?php include 'footer.php'; ?>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <table id="archivedTable">
+        <thead>
+            <tr>
+                <th>Accepted ID</th>
+                <th>Resident Name</th>
+                <th>Year Level</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php while ($row = $resultArchived->fetch_assoc()): ?>
+            <tr>
+                <td><?= htmlspecialchars($row['accepted_id']) ?></td>
+                <td><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?></td>
+                <td><?= htmlspecialchars($row['year_level']) ?></td>
+                <td>
+                    <!-- Retrieve Button -->
+                    <button type="button" class="btn btn-warning btn-icon retrieve-btn" data-id="<?= htmlspecialchars($row['res_id']); ?>" title="Retrieve">
+                        <i class="fas fa-undo-alt fa-lg"></i>
+                    </button>
 
+                    <!-- Delete Button -->
+                    <button type="button" class="btn btn-danger btn-icon delete-btn" data-id="<?= htmlspecialchars($row['res_id']); ?>" title="Delete">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            <?php endwhile; ?>
+        </tbody>
+    </table>
+
+    <!-- Hidden Forms -->
+    <form id="retrieveForm" method="POST" style="display: none;">
+        <input type="hidden" name="retrieve_res_id" id="retrieve_res_id">
+    </form>
+    <form id="deleteForm" method="POST" style="display: none;">
+        <input type="hidden" name="delete_res_id" id="delete_res_id">
+    </form>
+</main>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Handle delete confirmation
+        document.querySelectorAll(".delete-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                const resId = this.getAttribute("data-id");
+
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "This will permanently delete the resident.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "Yes, delete it!"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('delete_res_id').value = resId;
+                        document.getElementById('deleteForm').submit();
+                    }
+                });
+            });
+        });
+
+        // Handle retrieve confirmation
+        document.querySelectorAll(".retrieve-btn").forEach(button => {
+            button.addEventListener("click", function () {
+                const resId = this.getAttribute("data-id");
+
+                Swal.fire({
+                    title: "Retrieve this resident?",
+                    text: "They will be moved back to the active list.",
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonColor: "#ffc107",
+                    cancelButtonColor: "#6c757d",
+                    confirmButtonText: "Yes, retrieve"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('retrieve_res_id').value = resId;
+                        document.getElementById('retrieveForm').submit();
+                    }
+                });
+            });
+        });
+
+        // Show success or error alert if set from PHP
+        <?php if (!empty($swalType) && !empty($swalMessage)): ?>
+            Swal.fire({
+                icon: '<?= $swalType ?>',
+                title: '<?= $swalMessage ?>',
+                confirmButtonColor: '#00205b'
+            }).then(() => {
+                <?php if ($redirectUrl): ?>
+                    window.location.href = '<?= $redirectUrl ?>'; // Redirect after successful retrieve
+                <?php else: ?>
+                    // Reload current page for delete success or errors
+                    window.location.href = window.location.href.split('?')[0];
+                <?php endif; ?>
+            });
+        <?php endif; ?>
+
+        // Client-side search/filter function
+        const searchInput = document.getElementById('searchArchived');
+        searchInput.addEventListener('keyup', function () {
+            const filter = searchInput.value.toLowerCase();
+            const rows = document.querySelectorAll('#archivedTable tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+    });
+</script>
 </body>
-</html>
 
-<!-- HTML clear. Cleanse the javascript alert -->
+<?php include 'footer.php'; ?>
+
+</html>

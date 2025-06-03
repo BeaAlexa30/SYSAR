@@ -135,7 +135,7 @@
                         <!-- YOUTH MANAGE -->
                     <?php else : ?>
                         <?php if ($current_page == 'dashboard.php') : ?>
-                        <?php elseif (in_array($current_page, ['youth_manage.php', 'pending_reqID.php', 'youth_archive.php,archive-youth.php'])) : ?>
+                        <?php elseif (in_array($current_page, ['youth_manage.php', 'pending_reqID.php', 'youth_archive.php','archive-youth.php'])) : ?>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page == 'youth_manage.php' ? 'fw-bold text-primary' : ''; ?>" href="youth_manage.php">MASTERLIST</a>
                             </li>
@@ -155,12 +155,17 @@
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page == 'history_docs.php' ? 'fw-bold text-primary' : ''; ?>" href="history_docs.php">BACKLOGS</a>
                             </li>
-                            <?php elseif (in_array($current_page, ['accepted_assistance.php', 'pending_assistance.php'])) : ?>
+
+
+                            <?php elseif (in_array($current_page, ['accepted_assistance.php', 'pending_assistance.php', 'archive-assistance.php'])) : ?>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page == 'accepted_assistance.php' ? 'fw-bold text-primary' : ''; ?>" href="accepted_assistance.php">MASTERLIST</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page == 'pending_assistance.php' ? 'fw-bold text-primary' : ''; ?>" href="pending_assistance.php">PENDING</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?= $current_page == 'archive-assistance.php' ? 'fw-bold text-primary' : ''; ?>" href="archive-assistance.php">ARCHIVE</a>
                             </li>
                         <?php endif; ?>
                         <li class="nav-item">

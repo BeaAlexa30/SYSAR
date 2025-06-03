@@ -1,20 +1,45 @@
-TO-DO LIST
+Archive resident member (AS OF MAY 29, 2025)
 
-AS OF MAY 7, 2025
+ (archive-youth) - DONE
+ (accepted_assistance.php) - DONE
+ (archive-assistance.php) - DONE
+ (doc_to_print.php) - DONE
+ (history_docs.php) - DONE
 
-Remove delete button (youth_manage.php) - DONE
-Automatic delete of masterlist if marereach nya 30 age above - DONE
+Updated:
+ (login.php) - DONE [May 29, 2025 SweetAlerts]
+ (youth_manage.php) - DONE [updated May 29, 2025 SweetAlerts, Edited Tables]
+ (pending_reqID.php) - DONE [updated May 29, 2025 SweetAlerts, Edited Tables]
+
+UPDATED (AS OF JUNE 1, 2025)
+ 
+  (accepted_assistance.php) - DONE
+  (archive-assistance.php) - DONE
+  (pending_assistance.php) - DONE
+  (docreq_form.php) - DONE
+  (educ_assistance_form.php) - DONE
+
+Code for Print:
  (youth_manage.php) - DONE
 
-Archive resident member
+---------------------------------------------------------------------------------------
 
- (accepted_assistance.php) -
+TO-DO LIST
 
+AS OF JUNE 1, 2025
 
+(pending_residentID.php) - Yung sa mother and father magkakaroon ng select kapag wala NONE and kapag deceased madidisabled
+                         - Ayusin ko SweetAlerts
+
+EXCEL SAMPLE DATA:
+ (RESIDENT for youth_manage.php) - DONE/(Di ko magawa code hehe)
+
+Code for Upload:
+ (youth_manage.php)
 
 GRAPH FOR LEVEL OF SCHOOL PER YOUTH
 GRAPH FOR AGE DISTRIBUTION ()
-Ano lang, pag separate lang namin sa graph yung daycare, elem, jsh, shs, tsaka college
+Ano lang, pag separate lang namin sa graph yung kindergarten, elem, jsh, shs, tsaka college
 
 Notify for confirmation thru email
 *optional sa number (user)

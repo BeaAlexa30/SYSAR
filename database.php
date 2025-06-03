@@ -3,7 +3,7 @@
 $hostName = "localhost";
 $dbUser = "root";
 $dbPassword = "";
-$dbName = "sk_barangaydb";
+$dbName = "skbarangay_updated";
 
 // Create connection
 $conn = mysqli_connect($hostName, $dbUser, $dbPassword, $dbName);

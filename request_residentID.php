@@ -2,14 +2,14 @@
 session_start();
 include('database.php');
 
-// Check if the form is submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Collect form data and sanitize inputs
     $first_name = trim($_POST['first_name']);
     $middle_name = trim($_POST['middle_name']);
     $last_name = trim($_POST['last_name']);
+    $suffix = trim($_POST['suffix']);
     $address = trim($_POST['address']);
     $contact_num1 = trim($_POST['contact_num1']);
+    $contact_num2 = trim($_POST['contact_num2']);
     $email = trim($_POST['email']);
     $gender = trim($_POST['gender']);
     $age = trim($_POST['age']);
@@ -23,40 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cp_contactnum = trim($_POST['cp_contactnum']);
     $cp_address = trim($_POST['cp_address']);
 
-    // File Upload Handling
-    $filename = "";
-    if (!empty($_FILES['picture']['name'])) {
-        $target_dir = "uploads/"; // Ensure this folder exists
-        if (!file_exists($target_dir)) {
-            mkdir($target_dir, 0777, true); // Create directory if it doesn't exist
-        }
-
-        $file_name = basename($_FILES['picture']['name']);
-        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-        $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
-        $new_file_name = uniqid() . "." . $file_ext; // Generate unique filename
-        $target_file = $target_dir . $new_file_name;
-
-        // Validate file type and size
-        if (!in_array($file_ext, $allowed_extensions)) {
-            $_SESSION['message'] = "Invalid image format. Only JPG, JPEG, PNG, and GIF are allowed.";
-            $_SESSION['alertType'] = "danger";
-        } elseif ($_FILES['picture']['size'] > 2 * 1024 * 1024) { // Limit to 2MB
-            $_SESSION['message'] = "File size too large. Maximum 2MB allowed.";
-            $_SESSION['alertType'] = "danger";
-        } elseif (!move_uploaded_file($_FILES['picture']['tmp_name'], $target_file)) {
-            $_SESSION['message'] = "Error uploading file.";
-            $_SESSION['alertType'] = "danger";
-        } else {
-            $filename = $new_file_name; // Store filename in DB
-        }
-    }
-
-    // Debugging: Check if filename is set correctly
-    // echo "Filename: " . $filename;
-    // exit();
-
-    // Validate required fields
     if (
         empty($first_name) || empty($middle_name) || empty($last_name) || empty($address) || 
         empty($contact_num1) || empty($email) || empty($gender) || empty($dob) || empty($age) || 
@@ -77,22 +43,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['message'] = "Invalid emergency contact number format.";
         $_SESSION['alertType'] = "danger";
     } else {
-        // Prepare SQL statement
         $sql = "INSERT INTO skmembers_queue (
-                    first_name, middle_name, last_name, address, contact_num1, 
-                    email, gender, age, dob, PWD, 
-                    nationality, father_fullname, mother_fullname, contact_person, 
-                    cp_relationship, cp_contactnum, cp_address, filename, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
+                    first_name, middle_name, last_name, suffix, address, contact_num1, contact_num2, 
+                    email, gender, age, dob, PWD, nationality, father_fullname, mother_fullname, 
+                    contact_person, cp_relationship, cp_contactnum, cp_address, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
 
         if ($stmt = mysqli_prepare($conn, $sql)) {
             mysqli_stmt_bind_param(
                 $stmt,
-                "ssssssssssssssssss",
-                $first_name, $middle_name, $last_name, $address, $contact_num1, 
-                $email, $gender, $age, $dob, $PWD, 
-                $nationality, $father_fullname, $mother_fullname, $contact_person, 
-                $cp_relationship, $cp_contactnum, $cp_address, $filename
+                "sssssssssssssssssss",
+                $first_name, $middle_name, $last_name, $suffix, $address, $contact_num1, $contact_num2,
+                $email, $gender, $age, $dob, $PWD, $nationality, $father_fullname, $mother_fullname,
+                $contact_person, $cp_relationship, $cp_contactnum, $cp_address
             );
 
             if (mysqli_stmt_execute($stmt)) {
@@ -245,7 +208,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-
     <div class="form-group">
         <div>
             <label for="contact_num1"><span class="required">*</span>Contact Number 1</label>
@@ -310,8 +272,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="form-group">
         <div>
-            <label for="religion">Religion</label>
-            <input type="text" id="religion" name="religion" class="form-control">
+            <label for="religion"><span style="color: red;">*</span>Religion</label>
+            <input type="text" id="religion" name="religion" class="form-control" required>
         </div>
         <div>
             <label for="nationality"><span style="color: red;">*</span>Nationality</label>
@@ -364,12 +326,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="cp_address"><span style="color: red;">*</span>Address</label>
             <input type="text" id="cp_address" name="cp_address" class="form-control" required>
         </div>
-    </div>
-
-    <div class="mb-3">
-        <label for="filename"><span style="color: red;">*</span>Attact 2X2 Picture Here</label>
-        <input type="file" name="picture" class="form-control" required>
-
     </div>
 
     <div class="button-container">
@@ -437,5 +393,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 </body>
 </html>
-
-<!-- cleanse the javascript alert -->
