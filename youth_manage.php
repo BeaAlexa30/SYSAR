@@ -65,7 +65,8 @@ $accepted_sql =
         q.middle_name,
         q.last_name, 
         q.gender, 
-        q.age
+        q.age,
+        q.address
     FROM accepted_members a
     JOIN skmembers_queue q ON a.members_id = q.id
     WHERE a.archive = 'No'
@@ -84,6 +85,9 @@ if (!$accepted_result) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Add Bootstrap JS and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="icon" type="image/jpg" href="SKFILES/Org_Chart_and_Logos/SK_LOGO.jpg" />
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -217,6 +221,15 @@ if (!$accepted_result) {
         <div style="width: 90%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <h1>Accepted Resident to be a Member</h1>
             <div style="display: flex; align-items: center; gap: 10px;">
+                <!-- Add Upload Buttons -->
+                <div class="btn-group">
+                    <button type="button" class="btn btn-success" id="uploadBtn">
+                        <i class="fa fa-upload"></i> Upload CSV
+                    </button>
+                    <button type="button" class="btn btn-info" id="downloadTemplateBtn">
+                        <i class="fa fa-download"></i> Download Template
+                    </button>
+                </div>
                 <select id="rowsPerPage" class="form-select form-select-sm" style="width: 100px;">
                     <option value="10">Show 10</option>
                     <option value="25" selected>Show 25</option>
@@ -233,11 +246,42 @@ if (!$accepted_result) {
             </div>
         </div>
 
+        <!-- Add Upload Modal -->
+        <div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="uploadModalLabel">Upload Youth Data CSV</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="csvFile" class="form-label">Select CSV File</label>
+                                <input type="file" class="form-control" id="csvFile" name="csv_file" accept=".csv" required>
+                            </div>
+                            <div class="alert alert-info">
+                                <small>
+                                    <strong>Note:</strong> Please make sure your CSV file follows the template format.
+                                    You can download the template using the "Download Template" button.
+                                </small>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="submitUpload">Upload</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <table id="acceptedTable">
             <thead>
                 <tr>
                     <th>Resident ID</th>
                     <th>Full Name</th>
+                    <th>Address</th>
                     <th>Gender</th>
                     <th>Age</th>
                     <th>Action</th>
@@ -252,7 +296,8 @@ if (!$accepted_result) {
                                 <?= htmlspecialchars($row['first_name'] . " " . $row['middle_name'] . " " . $row['last_name']) ?>
                             </a>
                         </td>
-                        <td><?= htmlspecialchars($row['gender']) ?></td>
+                        <td><?= htmlspecialchars($row['address']) ?></td>
+                        <td><?= htmlspecialchars($row['gender']) ?></td>        
                         <td><?= htmlspecialchars($row['age']) ?></td>
                         <td>
                             <button class="btn btn-warning archive-btn" data-id="<?= $row['id'] ?>" title="Archive">
@@ -458,6 +503,79 @@ if (!$accepted_result) {
         // Print button
         document.getElementById("printTable").addEventListener("click", () => {
             window.print();
+        });
+
+        // Upload button click handler
+        document.getElementById('uploadBtn').addEventListener('click', function() {
+            const uploadModal = new bootstrap.Modal(document.getElementById('uploadModal'));
+            uploadModal.show();
+        });
+
+        // Download template button click handler
+        document.getElementById('downloadTemplateBtn').addEventListener('click', function() {
+            window.location.href = 'upload_youth_data.php?download_template=1';
+        });
+
+        // Submit upload button click handler
+        document.getElementById('submitUpload').addEventListener('click', function() {
+            const form = document.getElementById('uploadForm');
+            const formData = new FormData(form);
+            const fileInput = document.getElementById('csvFile');
+
+            if (!fileInput.files.length) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No File Selected',
+                    text: 'Please select a CSV file to upload.',
+                });
+                return;
+            }
+
+            // Show loading state
+            Swal.fire({
+                title: 'Uploading...',
+                text: 'Please wait while we process your file.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch('upload_youth_data.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Close the upload modal
+                const modalInstance = bootstrap.Modal.getInstance(document.getElementById('uploadModal'));
+                modalInstance.hide();
+                
+                // Show result
+                Swal.fire({
+                    icon: data.success ? 'success' : 'error',
+                    title: data.success ? 'Upload Complete' : 'Upload Failed',
+                    text: data.message,
+                    confirmButtonText: 'OK'
+                }).then((result) => {
+                    if (data.success) {
+                        // Reload the page to show new data
+                        window.location.reload();
+                    }
+                });
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Upload Failed',
+                    text: 'An error occurred while uploading the file.',
+                });
+            });
+        });
+
+        // Reset form when modal is closed
+        document.getElementById('uploadModal').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('uploadForm').reset();
         });
     </script>
 </body>

@@ -273,7 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="form-group">
         <div>
             <label for="religion"><span style="color: red;">*</span>Religion</label>
-            <input type="text" id="religion" name="religion" class="form-control" required>
+            <input type="text" id="religion" name="religion" class="form-control" >
         </div>
         <div>
             <label for="nationality"><span style="color: red;">*</span>Nationality</label>
@@ -292,12 +292,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <br><h4 style="color: rgb(63, 112, 234);">Parents Information</h4><br>
     <div class="form-group">
         <div>
-            <label for="father_fullname"><span style="color: red;">*</span>Father's Full Name</label>
-            <input type="text" id="father_fullname" name="father_fullname" class="form-control" required>
+            <label for="father_fullname"><span style="color: red;"></span>Father's Full Name</label>
+            <input type="text" id="father_fullname" name="father_fullname" class="form-control" >
         </div>
         <div>
-            <label for="mother_fullname"><span style="color: red;">*</span>Mother's Full Name</label>
-            <input type="text" id="mother_fullname" name="mother_fullname" class="form-control" required>
+            <label for="mother_fullname"><span style="color: red;"></span>Mother's Full Name</label>
+            <input type="text" id="mother_fullname" name="mother_fullname" class="form-control" >
         </div>
     </div>
 

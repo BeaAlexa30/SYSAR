@@ -28,7 +28,7 @@ TO-DO LIST
 
 AS OF JUNE 1, 2025
 
-(pending_residentID.php) - Yung sa mother and father magkakaroon ng select kapag wala NONE and kapag deceased madidisabled
+(pending_residentID.php) - Yung sa mother and father magkakaroon ng select kapag wala NONE and kapag deceased madidisabled - DONE AS OF JUNE 3, 2024
                          - Ayusin ko SweetAlerts
 
 EXCEL SAMPLE DATA:
@@ -37,8 +37,9 @@ EXCEL SAMPLE DATA:
 Code for Upload:
  (youth_manage.php)
 
-GRAPH FOR LEVEL OF SCHOOL PER YOUTH
-GRAPH FOR AGE DISTRIBUTION ()
+AS OF JUNE 3, 2025 - DONE
+GRAPH FOR LEVEL OF SCHOOL PER YOUTH - DONE
+GRAPH FOR AGE DISTRIBUTION () - DONE
 Ano lang, pag separate lang namin sa graph yung kindergarten, elem, jsh, shs, tsaka college
 
 Notify for confirmation thru email
