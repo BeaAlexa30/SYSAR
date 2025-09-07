@@ -17,18 +17,32 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     $id = $_GET['id'];
 
     if ($action == 'retrieve') {
-        $update_retrieve_sql = "UPDATE accepted_members SET archive = 'No' WHERE members_id = '$id'";
-        if (mysqli_query($conn, $update_retrieve_sql)) {
-            $update_status_sql = "UPDATE skmembers_queue SET status = 1 WHERE id = '$id'";
-            mysqli_query($conn, $update_status_sql);
+        $update_retrieve_sql = "UPDATE accepted_members SET archive = 'No' WHERE members_id = $1";
+        $result = pg_query_params($conn, $update_retrieve_sql, [$id]);
+        if ($result) {
+            $update_status_sql = "UPDATE skmembers_queue SET status = 1 WHERE id = $1";
+            pg_query_params($conn, $update_status_sql, [$id]);
             header("Location: archive-youth.php?action=retrieve_success");
             exit();
         }
     } elseif ($action == 'delete') {
-        $delete_sql = "DELETE FROM accepted_members WHERE members_id = '$id'";
-        if (mysqli_query($conn, $delete_sql)) {
-            header("Location: archive-youth.php?action=delete_success");
-            exit();
+        // Delete from accepted_members
+        $delete_accepted_sql = "DELETE FROM accepted_members WHERE members_id = $1";
+        $result_accepted = pg_query_params($conn, $delete_accepted_sql, [$id]);
+
+        if ($result_accepted) {
+            // Delete from skmembers_queue
+            $delete_queue_sql = "DELETE FROM skmembers_queue WHERE id = $1";
+            $result_queue = pg_query_params($conn, $delete_queue_sql, [$id]);
+
+            if ($result_queue) {
+                header("Location: archive-youth.php?action=delete_success");
+                exit();
+            } else {
+                die("Error deleting from skmembers_queue: " . pg_last_error($conn));
+            }
+        } else {
+            die("Error deleting from accepted_members: " . pg_last_error($conn));
         }
     }
 }
@@ -44,10 +58,10 @@ if (isset($_GET['action'])) {
 // Auto-archive members with age >= 31
 $update_archive_sql = 
     "UPDATE accepted_members a
-    JOIN skmembers_queue q ON a.members_id = q.id
-    SET a.archive = 'Yes'
-    WHERE q.age >= 31";
-mysqli_query($conn, $update_archive_sql);
+    SET archive = 'Yes'
+    FROM skmembers_queue q
+    WHERE a.members_id = q.id AND q.age >= 31";
+pg_query($conn, $update_archive_sql);
 
 // Fetch archived members
 $archived_sql = 
@@ -55,10 +69,10 @@ $archived_sql =
     FROM accepted_members a
     JOIN skmembers_queue q ON a.members_id = q.id
     WHERE a.archive = 'Yes'";
-$archived_result = mysqli_query($conn, $archived_sql);
+$archived_result = pg_query($conn, $archived_sql);
 
 if (!$archived_result) {
-    die("Error fetching archived members: " . mysqli_error($conn));
+    die("Error fetching archived members: " . pg_last_error($conn));
 }
 ?>
 
@@ -176,22 +190,30 @@ if (!$archived_result) {
                 </tr>
             </thead>
             <tbody>
-                <?php while ($row = mysqli_fetch_assoc($archived_result)) : ?>
-                <tr class="resident-row">
-                    <td><?php echo htmlspecialchars($row['res_id']); ?></td>
-                    <td><?php echo htmlspecialchars($row['first_name'] . " " . $row['middle_name'] . " " . $row['last_name']); ?></td>
-                    <td><?php echo htmlspecialchars($row['gender']); ?></td>
-                    <td><?php echo htmlspecialchars($row['age']); ?></td>
-                    <td class="action-container">
-                        <a href="#" class="btn btn-warning btn-icon retrieve-btn" data-id="<?php echo $row['id']; ?>" title="Retrieve">
-                            <i class="fa fa-undo"></i>
-                        </a>
-                        <a href="#" class="btn btn-danger btn-icon delete-btn" data-id="<?php echo $row['id']; ?>" title="Delete">
-                            <i class="fa fa-trash"></i>
-                        </a>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
+                <?php if (pg_num_rows($archived_result) === 0): ?>
+                    <tr>
+                        <td colspan="5" style="text-align:center; color: #888;">
+                            No archived members found.
+                        </td>
+                    </tr>
+                <?php else: ?>
+                    <?php while ($row = pg_fetch_assoc($archived_result)) : ?>
+                    <tr class="resident-row">
+                        <td><?php echo htmlspecialchars($row['res_id']); ?></td>
+                        <td><?php echo htmlspecialchars($row['first_name'] . " " . $row['middle_name'] . " " . $row['last_name']); ?></td>
+                        <td><?php echo htmlspecialchars($row['gender']); ?></td>
+                        <td><?php echo htmlspecialchars($row['age']); ?></td>
+                        <td class="action-container">
+                            <a href="#" class="btn btn-warning btn-icon retrieve-btn" data-id="<?php echo $row['id']; ?>" title="Retrieve">
+                                <i class="fa fa-undo"></i>
+                            </a>
+                            <a href="#" class="btn btn-danger btn-icon delete-btn" data-id="<?php echo $row['id']; ?>" title="Delete">
+                                <i class="fa fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                <?php endif; ?>
             </tbody>
         </table>
 

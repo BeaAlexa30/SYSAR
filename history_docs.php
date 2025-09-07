@@ -10,15 +10,20 @@ if (!isset($_SESSION['username'])) {
 // Handle deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $delete_id = $_POST['delete_id'];
-    $stmt = $conn->prepare("DELETE FROM completed_doc_requests WHERE id = ?");
-    $stmt->bind_param("i", $delete_id);
-    $stmt->execute();
-    $stmt->close();
-    echo "<script>
-        localStorage.setItem('deleted', 'true');
-        window.location.href = 'history_docs.php';
-    </script>";
-    exit;
+
+    // Use pg_query_params for deletion
+    $deleteQuery = "DELETE FROM completed_doc_requests WHERE id = $1";
+    $deleteResult = pg_query_params($conn, $deleteQuery, [$delete_id]);
+
+    if ($deleteResult) {
+        echo "<script>
+            localStorage.setItem('deleted', 'true');
+            window.location.href = 'history_docs.php';
+        </script>";
+        exit;
+    } else {
+        die("Error deleting record: " . pg_last_error($conn));
+    }
 }
 
 // Pagination settings
@@ -28,15 +33,19 @@ $offset = ($page - 1) * $limit;
 
 // Get total records
 $totalQuery = "SELECT COUNT(*) as total FROM completed_doc_requests";
-$totalResult = $conn->query($totalQuery)->fetch_assoc();
-$totalRecords = $totalResult['total'];
+$totalResult = pg_query($conn, $totalQuery);
+if (!$totalResult) {
+    die("Error fetching total records: " . pg_last_error($conn));
+}
+$totalRecords = pg_fetch_assoc($totalResult)['total'];
 $totalPages = ceil($totalRecords / $limit);
 
 // Fetch paginated records
-$stmt = $conn->prepare("SELECT * FROM completed_doc_requests LIMIT ? OFFSET ?");
-$stmt->bind_param("ii", $limit, $offset);
-$stmt->execute();
-$completedResult = $stmt->get_result();
+$fetchQuery = "SELECT * FROM completed_doc_requests LIMIT $1 OFFSET $2";
+$completedResult = pg_query_params($conn, $fetchQuery, [$limit, $offset]);
+if (!$completedResult) {
+    die("Error fetching records: " . pg_last_error($conn));
+}
 ?>
 
 <!DOCTYPE html>
@@ -167,25 +176,33 @@ $completedResult = $stmt->get_result();
             </tr>
         </thead>
         <tbody>
-            <?php while ($row = $completedResult->fetch_assoc()): ?>
+            <?php if (pg_num_rows($completedResult) === 0): ?>
                 <tr>
-                    <td><?= htmlspecialchars($row['res_id']) ?></td>
-                    <td><?= htmlspecialchars($row['first_name'] . " " . $row['last_name']) ?></td>
-                    <td>
-                        <a href="uploads/<?= htmlspecialchars($row['docs_filename']) ?>" target="_blank" class="icon-btn view-btn" title="View Document">
-                            <i class="bi bi-eye-fill"></i>
-                        </a>
-                    </td>
-                    <td>
-                        <form method="post" class="delete-form">
-                            <input type="hidden" name="delete_id" value="<?= htmlspecialchars($row['id']) ?>">
-                            <button type="button" class="btn btn-danger btn-icon delete-btn" title="Delete">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </form>
+                    <td colspan="4" style="text-align:center; color: #888;">
+                        No completed document requests found.
                     </td>
                 </tr>
-            <?php endwhile; ?>
+            <?php else: ?>
+                <?php while ($row = pg_fetch_assoc($completedResult)): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($row['res_id']) ?></td>
+                        <td><?= htmlspecialchars($row['first_name'] . " " . $row['last_name']) ?></td>
+                        <td>
+                            <a href="uploads/<?= htmlspecialchars($row['docs_filename']) ?>" target="_blank" class="icon-btn view-btn" title="View Document">
+                                <i class="bi bi-eye-fill"></i>
+                            </a>
+                        </td>
+                        <td>
+                            <form method="post" class="delete-form">
+                                <input type="hidden" name="delete_id" value="<?= htmlspecialchars($row['id']) ?>">
+                                <button type="button" class="btn btn-danger btn-icon delete-btn" title="Delete">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+            <?php endif; ?>
         </tbody>
     </table>
 

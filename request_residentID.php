@@ -2,6 +2,18 @@
 session_start();
 include('database.php');
 
+// PHPMailer setup (add at the top of your file, after session_start)
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/PHPMailer.php';
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/SMTP.php';
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/Exception.php';
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+// Validate database connection
+if (!$conn) {
+    die("Database connection error: " . pg_last_error());
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $first_name = trim($_POST['first_name']);
     $middle_name = trim($_POST['middle_name']);
@@ -12,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contact_num2 = trim($_POST['contact_num2']);
     $email = trim($_POST['email']);
     $gender = trim($_POST['gender']);
-    $age = trim($_POST['age']);
     $dob = trim($_POST['dob']);
     $PWD = trim($_POST['PWD']);
     $nationality = trim($_POST['nationality']);
@@ -22,19 +33,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cp_relationship = trim($_POST['cp_relationship']);
     $cp_contactnum = trim($_POST['cp_contactnum']);
     $cp_address = trim($_POST['cp_address']);
+    $religion = isset($_POST['religion']) ? trim($_POST['religion']) : null;
+
+    // Calculate age from DOB
+    $dob_date = new DateTime($dob);
+    $today = new DateTime();
+    $age = $today->diff($dob_date)->y;
 
     if (
         empty($first_name) || empty($middle_name) || empty($last_name) || empty($address) || 
-        empty($contact_num1) || empty($email) || empty($gender) || empty($dob) || empty($age) || 
+        empty($contact_num1) || empty($email) || empty($gender) || empty($dob) || 
         empty($nationality) || empty($PWD) || empty($father_fullname) || empty($mother_fullname)
     ) {
         $_SESSION['message'] = "All required fields must be filled out.";
         $_SESSION['alertType'] = "danger";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $_SESSION['message'] = "Invalid email format.";
-        $_SESSION['alertType'] = "danger";
-    } elseif (!is_numeric($age) || $age <= 0) {
-        $_SESSION['message'] = "Age must be a valid number.";
         $_SESSION['alertType'] = "danger";
     } elseif (!is_numeric($contact_num1) || strlen($contact_num1) < 10) {
         $_SESSION['message'] = "Invalid contact number format.";
@@ -43,35 +57,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['message'] = "Invalid emergency contact number format.";
         $_SESSION['alertType'] = "danger";
     } else {
-        $sql = "INSERT INTO skmembers_queue (
-                    first_name, middle_name, last_name, suffix, address, contact_num1, contact_num2, 
-                    email, gender, age, dob, PWD, nationality, father_fullname, mother_fullname, 
-                    contact_person, cp_relationship, cp_contactnum, cp_address, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
+        // Check for duplicate entry
+        $check_sql = "SELECT * FROM skmembers_queue WHERE first_name = $1 AND last_name = $2 AND email = $3 AND contact_num1 = $4";
+        $check_params = [$first_name, $last_name, $email, $contact_num1];
+        $check_result = pg_query_params($conn, $check_sql, $check_params);
 
-        if ($stmt = mysqli_prepare($conn, $sql)) {
-            mysqli_stmt_bind_param(
-                $stmt,
-                "sssssssssssssssssss",
-                $first_name, $middle_name, $last_name, $suffix, $address, $contact_num1, $contact_num2,
-                $email, $gender, $age, $dob, $PWD, $nationality, $father_fullname, $mother_fullname,
-                $contact_person, $cp_relationship, $cp_contactnum, $cp_address
-            );
+        if (pg_num_rows($check_result) > 0) {
+            // Duplicate entry found
+            $_SESSION['message'] = "Duplicate entry detected. A record with the same First Name, Last Name, Email, and Contact Number already exists.";
+            $_SESSION['alertType'] = "danger";
+        } else {
+            // Insert new record
+            $sql = "INSERT INTO skmembers_queue (
+                        first_name, middle_name, last_name, suffix, address, contact_num1, contact_num2, 
+                        email, gender, age, dob, blood_type, PWD, nationality, father_fullname, mother_fullname, 
+                        contact_person, cp_relationship, cp_contactnum, cp_telephonenum, cp_address, religion
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)";
 
-            if (mysqli_stmt_execute($stmt)) {
+            $params = [
+                $first_name,
+                $middle_name,
+                $last_name,
+                $suffix,
+                $address,
+                $contact_num1,
+                !empty($contact_num2) ? $contact_num2 : 0, // Default value for BIGINT
+                $email,
+                $gender,
+                $age,
+                $dob,
+                !empty($blood_type) ? $blood_type : null, // Pass NULL if blood_type is empty
+                $PWD,
+                $nationality,
+                $father_fullname,
+                $mother_fullname,
+                $contact_person,
+                $cp_relationship,
+                $cp_contactnum,
+                !empty($cp_telephonenum) ? $cp_telephonenum : null, // Pass NULL if cp_telephonenum is empty
+                $cp_address,
+                $religion // Ensure religion is passed correctly
+            ];
+
+            $result = pg_query_params($conn, $sql, $params);
+
+            if ($result) {
+                // Send email to user
+                $mail = new PHPMailer(true);
+                try {
+                    $mail->isSMTP();
+                    $mail->Host       = 'smtp.gmail.com';
+                    $mail->SMTPAuth   = true;
+                    $mail->Username   = 'bmajck00@gmail.com';
+                    $mail->Password   = 'psrk suml kthe lxak'; // your app password
+                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                    $mail->Port       = 587;
+
+                    $mail->setFrom('bmajck00@gmail.com', 'SK Barangay');
+                    $mail->addAddress($email, $first_name);
+                    $mail->isHTML(true);
+                    $mail->Subject = 'Resident ID Request Submitted';
+                    $mail->Body    = "
+                        <p>Dear $first_name,</p>
+                        <p>Your request for a Resident ID has been <b>successfully submitted</b>.</p>
+                        <p>Please wait for further notice regarding the status of your request.</p>
+                        <br>
+                        <p>Thank you,<br>SK Barangay Admin</p>
+                    ";
+                    $mail->send();
+                } catch (Exception $e) {
+                    // Optionally log or handle the error
+                }
+
                 $_SESSION['message'] = "Your request has been submitted successfully!";
                 $_SESSION['alertType'] = "success";
             } else {
-                $_SESSION['message'] = "Error inserting data: " . mysqli_stmt_error($stmt);
+                $_SESSION['message'] = "Error inserting data: " . pg_last_error($conn);
                 $_SESSION['alertType'] = "danger";
             }
-            mysqli_stmt_close($stmt);
-        } else {
-            $_SESSION['message'] = "Database error: Unable to prepare statement.";
-            $_SESSION['alertType'] = "danger";
         }
     }
-    $conn->close();
 }
 ?>
 
@@ -272,8 +337,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="form-group">
         <div>
-            <label for="religion"><span style="color: red;">*</span>Religion</label>
-            <input type="text" id="religion" name="religion" class="form-control" >
+            <label for="religion"><span class="required">*</span>Religion</label>
+            <input type="text" id="religion" name="religion" class="form-control" required>
         </div>
         <div>
             <label for="nationality"><span style="color: red;">*</span>Nationality</label>
@@ -308,7 +373,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="text" id="contact_person" name="contact_person" class="form-control" required>
         </div>
         <div>
-            <label for="cp_relationship"><span style="color: red;">*</span>Relationship</label>
+            <label for="cp_relationship"><span class="required">*</span>Relationship</label>
             <input type="text" id="cp_relationship" name="cp_relationship" class="form-control" required>
         </div>
     </div>
@@ -348,36 +413,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         var message = "<?php echo isset($_SESSION['message']) ? $_SESSION['message'] : ''; ?>";
         var alertType = "<?php echo isset($_SESSION['alertType']) ? $_SESSION['alertType'] : ''; ?>";
 
         if (message) {
-            document.getElementById("alertMessage").innerText = message;
-            let alertModal = document.getElementById("customAlert");
-            let alertBox = document.getElementById("alertBox");
-            let alertIcon = document.getElementById("alertIcon");
-
-            // Apply styles based on alert type
             if (alertType === "success") {
-                alertBox.style.backgroundColor = "#d4edda"; // Light green
-                alertBox.style.color = "#155724"; // Dark green text
-                alertIcon.className = "fas fa-check-circle";
-                alertIcon.style.color = "#28a745";
+                Swal.fire({
+                    icon: "success",
+                    title: "Success",
+                    text: message,
+                });
             } else if (alertType === "danger") {
-                alertBox.style.backgroundColor = "#f8d7da"; // Light red
-                alertBox.style.color = "#721c24";
-                alertIcon.className = "fas fa-times-circle";
-                alertIcon.style.color = "#dc3545";
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: message,
+                });
             }
-
-            alertModal.style.display = "block";
-
-            // Close modal on button click
-            document.getElementById("closeAlert").addEventListener("click", function () {
-                alertModal.style.display = "none";
-            });
 
             <?php unset($_SESSION['message']); unset($_SESSION['alertType']); ?> // Clear message after displaying
         }
@@ -385,7 +440,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </script>
 
 <!-- Add FontAwesome for icons -->
-<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 
 <?php include 'footer.php'; ?>
 

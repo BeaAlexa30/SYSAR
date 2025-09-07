@@ -21,8 +21,11 @@ $page = isset($_GET['page']) && is_numeric($_GET['page']) && $_GET['page'] > 0 ?
 $countQuery = "SELECT COUNT(*) AS total FROM docreq_queue dq
     JOIN accepted_members am ON dq.sk_id = am.res_id
     JOIN skmembers_queue sq ON am.members_id = sq.id";
-$countResult = $conn->query($countQuery);
-$totalRows = $countResult->fetch_assoc()['total'] ?? 0;
+$countResult = pg_query($conn, $countQuery);
+if (!$countResult) {
+    die("Error counting rows: " . pg_last_error($conn));
+}
+$totalRows = pg_fetch_assoc($countResult)['total'] ?? 0;
 
 $totalPages = ceil($totalRows / $rowsPerPage);
 if ($page > $totalPages && $totalPages > 0) {
@@ -38,43 +41,75 @@ $query = "SELECT dq.id, am.res_id, sq.first_name, sq.last_name, dq.docs_filename
           JOIN accepted_members am ON dq.sk_id = am.res_id
           JOIN skmembers_queue sq ON am.members_id = sq.id
           ORDER BY dq.id DESC
-          LIMIT ?, ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("ii", $offset, $rowsPerPage);
-$stmt->execute();
-$pendingResult = $stmt->get_result();
+          LIMIT $1 OFFSET $2";
+$pendingResult = pg_query_params($conn, $query, [$rowsPerPage, $offset]);
+
+// Include PHPMailer files
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/PHPMailer.php';
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/SMTP.php';
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/Exception.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['done_id'])) {
     $done_id = $_POST['done_id'];
 
-    $fetchQuery = "SELECT am.res_id, sq.first_name, sq.last_name, dq.docs_filename 
+    // Fetch document request details
+    $fetchQuery = "SELECT am.res_id, sq.first_name, sq.last_name, sq.email, dq.docs_filename 
                    FROM docreq_queue dq
                    JOIN accepted_members am ON dq.sk_id = am.res_id
                    JOIN skmembers_queue sq ON am.members_id = sq.id
-                   WHERE dq.id = ?";
-    $stmtFetch = $conn->prepare($fetchQuery);
-    $stmtFetch->bind_param("i", $done_id);
-    $stmtFetch->execute();
-    $result_fetch = $stmtFetch->get_result();
-    $docData = $result_fetch->fetch_assoc();
-    $stmtFetch->close();
+                   WHERE dq.id = $1";
+    $result_fetch = pg_query_params($conn, $fetchQuery, [$done_id]);
+    $docData = pg_fetch_assoc($result_fetch);
 
     if ($docData) {
-        $insertQuery = "INSERT INTO completed_doc_requests (res_id, first_name, last_name, docs_filename) 
-                        VALUES (?, ?, ?, ?)";
-        $stmtInsert = $conn->prepare($insertQuery);
-        $stmtInsert->bind_param("isss", $docData['res_id'], $docData['first_name'], $docData['last_name'], $docData['docs_filename']);
-        $stmtInsert->execute();
-        $stmtInsert->close();
+        // Delete the file from the server
+        $filePath = "uploads/" . $docData['docs_filename'];
+        if (file_exists($filePath)) {
+            unlink($filePath); // Delete the file
+        }
 
-        $deleteQuery = "DELETE FROM docreq_queue WHERE id = ?";
-        $stmtDelete = $conn->prepare($deleteQuery);
-        $stmtDelete->bind_param("i", $done_id);
-        $stmtDelete->execute();
-        $stmtDelete->close();
+        // Insert into completed_doc_requests table
+        $insertQuery = "INSERT INTO completed_doc_requests (res_id, first_name, last_name, docs_filename) 
+                        VALUES ($1, $2, $3, $4)";
+        pg_query_params($conn, $insertQuery, [$docData['res_id'], $docData['first_name'], $docData['last_name'], $docData['docs_filename']]);
+
+        // Delete from docreq_queue table
+        $deleteQuery = "DELETE FROM docreq_queue WHERE id = $1";
+        pg_query_params($conn, $deleteQuery, [$done_id]);
+
+        // Send email notification to the user
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host       = 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'your-email@gmail.com'; // Replace with your email
+            $mail->Password   = 'your-app-password';    // Replace with your app password
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = 587;
+
+            $mail->setFrom('your-email@gmail.com', 'SK Barangay');
+            $mail->addAddress($docData['email'], $docData['first_name'] . ' ' . $docData['last_name']);
+
+            $mail->isHTML(true);
+            $mail->Subject = 'Document Ready for Claim';
+            $mail->Body    = "
+                <p>Dear {$docData['first_name']} {$docData['last_name']},</p>
+                <p>Your requested document <b>{$docData['docs_filename']}</b> is now ready for claim.</p>
+                <p>Please visit the SK Barangay office to collect your document.</p>
+                <br>
+                <p>Thank you,<br>SK Barangay Admin</p>
+            ";
+
+            $mail->send();
+        } catch (Exception $e) {
+            error_log("Email could not be sent. Mailer Error: {$mail->ErrorInfo}");
+        }
     }
 
-    $conn->close();
     echo "<script>
         localStorage.setItem('doc_done', 'true');
         window.location.href = window.location.pathname + '?rows=$rowsPerPage&page=$page';
@@ -251,10 +286,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['done_id'])) {
                 </tr>
             </thead>
             <tbody>
-                <?php if ($pendingResult->num_rows === 0): ?>
+                <?php if (pg_num_rows($pendingResult) === 0): ?>
                     <tr><td colspan="4">No pending document requests.</td></tr>
                 <?php else: ?>
-                    <?php while ($row = $pendingResult->fetch_assoc()): ?>
+                    <?php while ($row = pg_fetch_assoc($pendingResult)): ?>
                         <tr>
                             <td><?= htmlspecialchars($row['res_id']) ?></td>
                             <td><?= htmlspecialchars($row['first_name'] . " " . $row['last_name']) ?></td>

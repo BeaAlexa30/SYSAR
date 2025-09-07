@@ -14,7 +14,7 @@
             flex-direction: column;
             min-height: 100vh;
             font-family: Arial, sans-serif;
-            padding-top: 40px
+            padding-top: 40px;
         }
         .sk-title {
             font-weight: bold;
@@ -127,6 +127,27 @@
             font-weight: bold;
             width: 100%; /* Ensures the background spans the full width */
         }
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 10px; /* Rounded edges */
+            width: 60px; /* Square dimensions */
+            height: 60px; /* Square dimensions */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            font-size: 1.5rem;
+        }
+        .back-to-top:hover {
+            background-color: darkred;
+        }
     </style>
 </head>
 <body>
@@ -233,7 +254,7 @@
                 <img src="SKFILES/Fiesta/IMG_1682.jpg" alt="Event Image 7">
                 <img src="SKFILES/Fiesta/IMG_1707.jpg" alt="Event Image 8">
                 <img src="SKFILES/Fiesta/IMG_1719.jpg" alt="Event Image 9">
-                <img src="SKFILES/Fiesta/IMG_11775.jpg" alt="Event Image 10">
+                <img src="SKFILES/Fiesta/IMG_1775.jpg" alt="Event Image 10">
             </div>
             <button class="scroll-btn right" onclick="scrollGallery('gallery3', 300)">&#10095;</button>
         </div>
@@ -309,10 +330,29 @@
     <!-- End of event section -->
 </div>
 
+<!-- Back to Top Button -->
+<button class="back-to-top" id="backToTop" title="Back to Top">&uarr;</button>
+
 <script>
     function scrollGallery(galleryId, scrollAmount) {
         document.getElementById(galleryId).scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
+
+    // Back to Top Button Functionality
+    const backToTopButton = document.getElementById('backToTop');
+
+    window.addEventListener('scroll', () => {
+        // Show the button when the user scrolls down 100px
+        if (window.scrollY > 100) {
+            backToTopButton.style.display = 'flex';
+        } else {
+            backToTopButton.style.display = 'none';
+        }
+    });
+
+    backToTopButton.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
 </script>
 
 </main>

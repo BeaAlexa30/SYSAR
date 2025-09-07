@@ -5,44 +5,111 @@ if (!isset($_SESSION['username'])) {
     exit;
 }
 
+// PHPMailer setup (move these lines here)
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/PHPMailer.php';
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/SMTP.php';
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/Exception.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 include('database.php');
+
+// Validate database connection
+if (!$conn) {
+    die("Database connection error: " . pg_last_error());
+}
 
 // Fetch the next available res_id
 $res_id_sql = "SELECT MAX(res_id) AS max_res_id FROM accepted_members";
-$res_id_result = mysqli_query($conn, $res_id_sql);
-$row = mysqli_fetch_assoc($res_id_result);
-$next_res_id = $row['max_res_id'] ? $row['max_res_id'] + 1 : 2025001;
+$res_id_result = pg_query($conn, $res_id_sql);
+if ($res_id_result) {
+    $row = pg_fetch_assoc($res_id_result);
+    $next_res_id = $row['max_res_id'] ? $row['max_res_id'] + 1 : 2025001;
+} else {
+    die("Error fetching next res_id: " . pg_last_error($conn));
+}
 
 // Handle actions
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $action = $_GET['action'];
-    $id = $_GET['id'];
+    $id = intval($_GET['id']);
 
     if ($action == 'accept') {
-        $insert_sql = "INSERT INTO accepted_members (members_id, res_id) VALUES ('$id', '$next_res_id')";
-        if (mysqli_query($conn, $insert_sql)) {
-            $update_sql = "UPDATE skmembers_queue SET status = 1 WHERE id = '$id'";
-            mysqli_query($conn, $update_sql);
+        // 1. Assign the next available Resident ID
+        // 2. Move user from pending to accepted_members
+        // 3. Update status in skmembers_queue
+        // 4. Send email notification
+
+        // Fetch user info for email
+        $info_sql = "SELECT email, first_name FROM skmembers_queue WHERE id = $1";
+        $info_result = pg_query_params($conn, $info_sql, [$id]);
+        if ($info_row = pg_fetch_assoc($info_result)) {
+            $user_email = $info_row['email'];
+            $user_name = $info_row['first_name'];
+            $res_id = $next_res_id; // The assigned Resident ID
+
+            // Insert into accepted_members
+            $insert_sql = "INSERT INTO accepted_members (members_id, res_id, archive) VALUES ($1, $2, 'No')";
+            $insert_result = pg_query_params($conn, $insert_sql, [$id, $res_id]);
+
+            // Update status in skmembers_queue
+            $update_sql = "UPDATE skmembers_queue SET status = '1' WHERE id = $1";
+            pg_query_params($conn, $update_sql, [$id]);
+
+            // PHPMailer code (object creation and sending)
+            $mail = new PHPMailer(true);
+            try {
+                $mail->isSMTP();
+                $mail->Host       = 'smtp.gmail.com';
+                $mail->SMTPAuth   = true;
+                $mail->Username   = 'bmajck00@gmail.com';
+                $mail->Password   = 'psrk suml kthe lxak'; // your app password
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = 587;
+
+                $mail->setFrom('bmajck00@gmail.com', 'SK Barangay 252');
+                $mail->addAddress($user_email, $user_name);
+                $mail->isHTML(true);
+                $mail->Subject = 'Your SK Barangay ID Request is Approved';
+                $mail->Body    = "
+                    <p>Dear $user_name,</p>
+                    <p>Your request for an SK Barangay ID has been <b>approved</b>.</p>
+                    <p>Your assigned Resident ID is: <b>$res_id</b></p>
+                    <p>You may now use your Resident ID for SK Barangay services.</p>
+                    <br>
+                    <p>Thank you,<br>SK Barangay Admin</p>
+                ";
+
+                $mail->send();
+            } catch (Exception $e) {
+                // Optionally log or handle the error
+            }
+
+            // Redirect or show a success message
+            header("Location: pending_reqID.php?success=1");
+            exit();
+        } else {
+            // Handle error: user not found
+            header("Location: pending_reqID.php?error=notfound");
+            exit();
         }
     } elseif ($action == 'archive') {
-        $update_archive_sql = "UPDATE accepted_members SET archive = 'Yes' WHERE members_id = '$id'";
-        if (mysqli_query($conn, $update_archive_sql)) {
-            $update_status_sql = "UPDATE skmembers_queue SET status = 1 WHERE id = '$id'";
-            mysqli_query($conn, $update_status_sql);
+        $update_archive_sql = "UPDATE accepted_members SET archive = 'Yes' WHERE members_id = $1";
+        $archive_result = pg_query_params($conn, $update_archive_sql, [$id]);
+        if ($archive_result) {
+            $update_status_sql = "UPDATE skmembers_queue SET status = 1 WHERE id = $1";
+            pg_query_params($conn, $update_status_sql, [$id]);
+        } else {
+            die("Error archiving member: " . pg_last_error($conn));
         }
         header("Location: youth_manage.php?archived=1");
         exit();
     } elseif ($action == 'delete') {
-        $delete_accepted_sql = "DELETE FROM accepted_members WHERE members_id = '$id'";
-        $delete_queue_sql = "DELETE FROM skmembers_queue WHERE id = '$id'";
-        mysqli_query($conn, $delete_accepted_sql);
-        mysqli_query($conn, $delete_queue_sql);
-        mysqli_query($conn, "SET @num := 0");
-        mysqli_query($conn, "UPDATE skmembers_queue SET id = @num := @num + 1 ORDER BY id");
-        mysqli_query($conn, "ALTER TABLE skmembers_queue AUTO_INCREMENT = 1");
-        mysqli_query($conn, "SET @num := 0");
-        mysqli_query($conn, "UPDATE accepted_members SET id = @num := @num + 1, members_id = @num ORDER BY id");
-        mysqli_query($conn, "ALTER TABLE accepted_members AUTO_INCREMENT = 1");
+        $delete_accepted_sql = "DELETE FROM accepted_members WHERE members_id = $1";
+        $delete_queue_sql = "DELETE FROM skmembers_queue WHERE id = $1";
+        pg_query_params($conn, $delete_accepted_sql, [$id]);
+        pg_query_params($conn, $delete_queue_sql, [$id]);
         header("Location: youth_manage.php");
         exit();
     }
@@ -51,12 +118,12 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 // Auto-archive by age
 $update_archive_sql = 
     "UPDATE accepted_members a
-    JOIN skmembers_queue q ON a.members_id = q.id
-    SET a.archive = 'Yes'
-    WHERE q.age >= 31";
-mysqli_query($conn, $update_archive_sql);
+    SET archive = 'Yes'
+    FROM skmembers_queue q
+    WHERE a.members_id = q.id AND q.age >= 31";
+pg_query($conn, $update_archive_sql);
 
-// Fetch accepted, unarchived youth members (without filename)
+// Fetch accepted, unarchived youth members
 $accepted_sql = 
     "SELECT 
         a.res_id, 
@@ -71,10 +138,10 @@ $accepted_sql =
     JOIN skmembers_queue q ON a.members_id = q.id
     WHERE a.archive = 'No'
     AND q.age BETWEEN 1 AND 30";
-$accepted_result = mysqli_query($conn, $accepted_sql);
+$accepted_result = pg_query($conn, $accepted_sql);
 
 if (!$accepted_result) {
-    die("Error fetching accepted members: " . mysqli_error($conn));
+    die("Error fetching accepted members: " . pg_last_error($conn));
 }
 ?>
 
@@ -213,6 +280,15 @@ if (!$accepted_result) {
                 display: none !important;
             }
         }
+        .swal2-card-popup {
+            border-radius: 16px !important;
+            box-shadow: 0 6px 24px rgba(0,32,91,0.15) !important;
+            padding: 0 !important;
+        }
+        .swal2-card-popup .swal2-html-container {
+            margin: 0 !important;
+            padding: 0 0 10px 0 !important;
+        }
     </style>
 </head>
 <body>
@@ -288,7 +364,7 @@ if (!$accepted_result) {
                 </tr>
             </thead>
             <tbody>
-                <?php while ($row = mysqli_fetch_assoc($accepted_result)) : ?>
+                <?php while ($row = pg_fetch_assoc($accepted_result)) : ?>
                     <tr class="resident-row">
                         <td><?= htmlspecialchars($row['res_id']) ?></td>
                         <td>
@@ -471,30 +547,40 @@ if (!$accepted_result) {
                         }
 
                         let htmlContent = `
-                            <div style="text-align:left;">
-                            <strong>Full Name:</strong> ${data.first_name} ${data.middle_name} ${data.last_name} ${data.suffix || ''}<br>
-                            <strong>Address:</strong> ${data.address}<br>
-                            <strong>Contact 1:</strong> ${data.contact_num1}<br>
-                            <strong>Contact 2:</strong> ${data.contact_num2}<br>
-                            <strong>Email:</strong> ${data.email}<br>
-                            <strong>Gender:</strong> ${data.gender}<br>
-                            <strong>Age:</strong> ${data.age}<br>
-                            <strong>Blood Type:</strong> ${data.blood_type}<br>
-                            <strong>Date of Birth:</strong> ${data.dob}<br>
-                            <strong>Religion:</strong> ${data.religion}<br>
-                            <strong>PWD:</strong> ${data.PWD}<br>
-                            <strong>Nationality:</strong> ${data.nationality}<br>
-                            <strong>Father's Name:</strong> ${data.father_fullname}<br>
-                            <strong>Mother's Name:</strong> ${data.mother_fullname}<br>
-                            <strong>Contact Person:</strong> ${data.contact_person}<br>
-                            <strong>Relationship:</strong> ${data.cp_relationship}<br>
-                            <strong>Contact Person Number:</strong> ${data.cp_contactnum}<br>
-                            </div>
+                            <h4 style="margin:0 0 10px 0;color:#00205b;">
+                                ${data.first_name} ${data.middle_name} ${data.last_name} ${data.suffix || ''}
+                            </h4>
+                            <table class="table table-sm table-borderless" style="margin-bottom:0;">
+                                <tbody>
+                                    <tr><th>Resident ID:</th><td>${data.res_id || ''}</td></tr>
+                                    <tr><th>Address:</th><td>${data.address}</td></tr>
+                                    <tr><th>Contact 1:</th><td>${data.contact_num1}</td></tr>
+                                    <tr><th>Contact 2:</th><td>${data.contact_num2}</td></tr>
+                                    <tr><th>Email:</th><td>${data.email}</td></tr>
+                                    <tr><th>Gender:</th><td>${data.gender}</td></tr>
+                                    <tr><th>Age:</th><td>${data.age}</td></tr>
+                                    <tr><th>Blood Type:</th><td>${data.blood_type}</td></tr>
+                                    <tr><th>Date of Birth:</th><td>${data.dob}</td></tr>
+                                    <tr><th>Religion:</th><td>${data.religion}</td></tr>
+                                    <tr><th>PWD:</th><td>${data.PWD}</td></tr>
+                                    <tr><th>Nationality:</th><td>${data.nationality}</td></tr>
+                                    <tr><th>Father's Name:</th><td>${data.father_fullname}</td></tr>
+                                    <tr><th>Mother's Name:</th><td>${data.mother_fullname}</td></tr>
+                                    <tr><th>Contact Person:</th><td>${data.contact_person}</td></tr>
+                                    <tr><th>Relationship:</th><td>${data.cp_relationship}</td></tr>
+                                    <tr><th>Contact Person Number:</th><td>${data.cp_contactnum}</td></tr>
+                                </tbody>
+                            </table>
                         `;
                         Swal.fire({
                             title: 'Member Information',
                             html: htmlContent,
-                            width: 600
+                            width: 650,
+                            showCloseButton: true,
+                            showConfirmButton: false,
+                            customClass: {
+                                popup: 'swal2-card-popup'
+                            }
                         });
                     });
             });

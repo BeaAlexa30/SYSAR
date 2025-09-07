@@ -13,14 +13,14 @@ $redirectUrl = ""; // empty by default
 // Handle retrieval
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['retrieve_res_id'])) {
     $res_id = $_POST['retrieve_res_id'];
-    $sqlRetrieve = "UPDATE accepted_for_assistance SET status = 1 WHERE res_id = '$res_id'";
-    if ($conn->query($sqlRetrieve) === TRUE) {
+    $sqlRetrieve = "UPDATE accepted_for_assistance SET status = TRUE WHERE res_id = '$res_id'";
+    if (pg_query($conn, $sqlRetrieve)) {
         $swalType = "success";
         $swalMessage = "Resident retrieved successfully!";
-        $redirectUrl = "accepted_assistance.php"; // redirect after success retrieve
+        $redirectUrl = "accepted_assistance.php";
     } else {
         $swalType = "error";
-        $swalMessage = "Error retrieving resident: " . $conn->error;
+        $swalMessage = "Error retrieving resident: " . pg_last_error($conn);
     }
 }
 
@@ -28,30 +28,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['retrieve_res_id'])) {
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_res_id'])) {
     $res_id = $_POST['delete_res_id'];
 
-    // Start transaction (optional but recommended)
-    $conn->begin_transaction();
+    // Start transaction
+    pg_query($conn, "BEGIN");
 
     try {
         // Delete from accepted_for_assistance
         $sqlDeleteAccepted = "DELETE FROM accepted_for_assistance WHERE res_id = '$res_id'";
-        if (!$conn->query($sqlDeleteAccepted)) {
-            throw new Exception("Error deleting from accepted_for_assistance: " . $conn->error);
+        if (!pg_query($conn, $sqlDeleteAccepted)) {
+            throw new Exception("Error deleting from accepted_for_assistance: " . pg_last_error($conn));
         }
 
         // Delete from assistance_req
         $sqlDeleteAssistanceReq = "DELETE FROM assistance_req WHERE res_id = '$res_id'";
-        if (!$conn->query($sqlDeleteAssistanceReq)) {
-            throw new Exception("Error deleting from assistance_req: " . $conn->error);
+        if (!pg_query($conn, $sqlDeleteAssistanceReq)) {
+            throw new Exception("Error deleting from assistance_req: " . pg_last_error($conn));
         }
 
         // Commit transaction if both deletes succeed
-        $conn->commit();
+        pg_query($conn, "COMMIT");
 
         $swalType = "success";
         $swalMessage = "Resident deleted successfully from both tables!";
     } catch (Exception $e) {
         // Rollback transaction on error
-        $conn->rollback();
+        pg_query($conn, "ROLLBACK");
 
         $swalType = "error";
         $swalMessage = $e->getMessage();
@@ -63,10 +63,10 @@ $sqlArchived = "SELECT aa.id AS accepted_id, aa.res_id, sq.first_name, sq.last_n
                 FROM accepted_for_assistance aa
                 JOIN accepted_members am ON aa.res_id = am.res_id
                 JOIN skmembers_queue sq ON am.members_id = sq.id
-                WHERE aa.status = 0";
-$resultArchived = $conn->query($sqlArchived);
+                WHERE aa.status = FALSE";
+$resultArchived = pg_query($conn, $sqlArchived);
 
-$conn->close();
+pg_close($conn);
 ?>
 
 <!DOCTYPE html>
@@ -160,24 +160,31 @@ $conn->close();
             </tr>
         </thead>
         <tbody>
-            <?php while ($row = $resultArchived->fetch_assoc()): ?>
-            <tr>
-                <td><?= htmlspecialchars($row['accepted_id']) ?></td>
-                <td><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?></td>
-                <td><?= htmlspecialchars($row['year_level']) ?></td>
-                <td>
-                    <!-- Retrieve Button -->
-                    <button type="button" class="btn btn-warning btn-icon retrieve-btn" data-id="<?= htmlspecialchars($row['res_id']); ?>" title="Retrieve">
-                        <i class="fas fa-undo-alt fa-lg"></i>
-                    </button>
-
-                    <!-- Delete Button -->
-                    <button type="button" class="btn btn-danger btn-icon delete-btn" data-id="<?= htmlspecialchars($row['res_id']); ?>" title="Delete">
-                        <i class="fa fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-            <?php endwhile; ?>
+            <?php if (pg_num_rows($resultArchived) === 0): ?>
+                <tr>
+                    <td colspan="4" style="text-align:center; color: #888;">
+                        No archived residents found.
+                    </td>
+                </tr>
+            <?php else: ?>
+                <?php while ($row = pg_fetch_assoc($resultArchived)): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['accepted_id']) ?></td>
+                    <td><?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?></td>
+                    <td><?= htmlspecialchars($row['year_level']) ?></td>
+                    <td>
+                        <!-- Retrieve Button -->
+                        <button type="button" class="btn btn-warning btn-icon retrieve-btn" data-id="<?= htmlspecialchars($row['res_id']); ?>" title="Retrieve">
+                            <i class="fas fa-undo-alt fa-lg"></i>
+                        </button>
+                        <!-- Delete Button -->
+                        <button type="button" class="btn btn-danger btn-icon delete-btn" data-id="<?= htmlspecialchars($row['res_id']); ?>" title="Delete">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            <?php endif; ?>
         </tbody>
     </table>
 

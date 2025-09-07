@@ -1,0 +1,12 @@
+UPDATED PROGRESS
+
+(AS OF September 5, 2025)
+
++ database.php - updated connection to the supabase (complete)
++ login.php - updated the codes and query (complete)
++ youth_manage.php - updated the codes and query (complete)
++ request_residentID.php - updated the codes and query (complete)
+
+(AS OF September 6, 2025
+
+)

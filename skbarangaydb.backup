@@ -1,0 +1,711 @@
+--
+-- PostgreSQL database dump
+--
+
+\restrict g6AioNHGg3xcbbkhVnydlohPImUN51XsanXFtKVYHKIQifl7j1xq8cLyfKPFnK5
+
+-- Dumped from database version 17.4
+-- Dumped by pg_dump version 17.6
+
+-- Started on 2025-09-05 15:09:20
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- TOC entry 218 (class 1259 OID 17294)
+-- Name: accepted_for_assistance; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.accepted_for_assistance (
+    id integer NOT NULL,
+    res_id integer NOT NULL,
+    year_level character varying(100) NOT NULL,
+    status boolean DEFAULT true
+);
+
+
+ALTER TABLE public.accepted_for_assistance OWNER TO postgres;
+
+--
+-- TOC entry 217 (class 1259 OID 17293)
+-- Name: accepted_for_assistance_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.accepted_for_assistance_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.accepted_for_assistance_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 3436 (class 0 OID 0)
+-- Dependencies: 217
+-- Name: accepted_for_assistance_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.accepted_for_assistance_id_seq OWNED BY public.accepted_for_assistance.id;
+
+
+--
+-- TOC entry 220 (class 1259 OID 17304)
+-- Name: accepted_members; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.accepted_members (
+    id integer NOT NULL,
+    members_id integer NOT NULL,
+    res_id integer NOT NULL,
+    status boolean DEFAULT true,
+    archive character varying(3) DEFAULT 'No'::character varying
+);
+
+
+ALTER TABLE public.accepted_members OWNER TO postgres;
+
+--
+-- TOC entry 219 (class 1259 OID 17303)
+-- Name: accepted_members_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.accepted_members_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.accepted_members_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 3437 (class 0 OID 0)
+-- Dependencies: 219
+-- Name: accepted_members_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.accepted_members_id_seq OWNED BY public.accepted_members.id;
+
+
+--
+-- TOC entry 222 (class 1259 OID 17313)
+-- Name: assistance_req; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.assistance_req (
+    id integer NOT NULL,
+    res_id integer NOT NULL,
+    year_level character varying(100) NOT NULL,
+    ccog_filename character varying(100) NOT NULL,
+    cor_filename character varying(100) NOT NULL
+);
+
+
+ALTER TABLE public.assistance_req OWNER TO postgres;
+
+--
+-- TOC entry 221 (class 1259 OID 17312)
+-- Name: assistance_req_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.assistance_req_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.assistance_req_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 3438 (class 0 OID 0)
+-- Dependencies: 221
+-- Name: assistance_req_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.assistance_req_id_seq OWNED BY public.assistance_req.id;
+
+
+--
+-- TOC entry 224 (class 1259 OID 17322)
+-- Name: completed_doc_requests; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.completed_doc_requests (
+    id integer NOT NULL,
+    res_id integer NOT NULL,
+    first_name character varying(255) NOT NULL,
+    last_name character varying(255) NOT NULL,
+    docs_filename character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.completed_doc_requests OWNER TO postgres;
+
+--
+-- TOC entry 223 (class 1259 OID 17321)
+-- Name: completed_doc_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.completed_doc_requests_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.completed_doc_requests_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 3439 (class 0 OID 0)
+-- Dependencies: 223
+-- Name: completed_doc_requests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.completed_doc_requests_id_seq OWNED BY public.completed_doc_requests.id;
+
+
+--
+-- TOC entry 226 (class 1259 OID 17331)
+-- Name: docreq_queue; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.docreq_queue (
+    id integer NOT NULL,
+    sk_id integer NOT NULL,
+    year_level character varying(50) NOT NULL,
+    purpose character varying(100) NOT NULL,
+    docs_filename character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.docreq_queue OWNER TO postgres;
+
+--
+-- TOC entry 225 (class 1259 OID 17330)
+-- Name: docreq_queue_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.docreq_queue_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.docreq_queue_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 3440 (class 0 OID 0)
+-- Dependencies: 225
+-- Name: docreq_queue_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.docreq_queue_id_seq OWNED BY public.docreq_queue.id;
+
+
+--
+-- TOC entry 228 (class 1259 OID 17338)
+-- Name: skmembers_queue; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.skmembers_queue (
+    id integer NOT NULL,
+    first_name character varying(50) NOT NULL,
+    middle_name character varying(50) NOT NULL,
+    last_name character varying(50) NOT NULL,
+    suffix character varying(11) NOT NULL,
+    address character varying(100) NOT NULL,
+    contact_num1 bigint NOT NULL,
+    contact_num2 bigint NOT NULL,
+    email character varying(50) NOT NULL,
+    gender character varying(11) NOT NULL,
+    age integer NOT NULL,
+    blood_type character varying(11) NOT NULL,
+    dob character varying(50) NOT NULL,
+    religion character varying(50) NOT NULL,
+    pwd character varying(11) NOT NULL,
+    nationality character varying(11) NOT NULL,
+    father_fullname character varying(100) NOT NULL,
+    mother_fullname character varying(100) NOT NULL,
+    contact_person character varying(100) NOT NULL,
+    cp_relationship character varying(50) NOT NULL,
+    cp_contactnum bigint NOT NULL,
+    cp_telephonenum bigint NOT NULL,
+    cp_address character varying(100) NOT NULL,
+    status boolean DEFAULT false
+);
+
+
+ALTER TABLE public.skmembers_queue OWNER TO postgres;
+
+--
+-- TOC entry 227 (class 1259 OID 17337)
+-- Name: skmembers_queue_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.skmembers_queue_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.skmembers_queue_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 3441 (class 0 OID 0)
+-- Dependencies: 227
+-- Name: skmembers_queue_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.skmembers_queue_id_seq OWNED BY public.skmembers_queue.id;
+
+
+--
+-- TOC entry 230 (class 1259 OID 17348)
+-- Name: users; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.users (
+    id integer NOT NULL,
+    username character varying(50) NOT NULL,
+    password character varying(50) NOT NULL
+);
+
+
+ALTER TABLE public.users OWNER TO postgres;
+
+--
+-- TOC entry 229 (class 1259 OID 17347)
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.users_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.users_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 3442 (class 0 OID 0)
+-- Dependencies: 229
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+
+--
+-- TOC entry 3239 (class 2604 OID 17297)
+-- Name: accepted_for_assistance id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.accepted_for_assistance ALTER COLUMN id SET DEFAULT nextval('public.accepted_for_assistance_id_seq'::regclass);
+
+
+--
+-- TOC entry 3241 (class 2604 OID 17307)
+-- Name: accepted_members id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.accepted_members ALTER COLUMN id SET DEFAULT nextval('public.accepted_members_id_seq'::regclass);
+
+
+--
+-- TOC entry 3244 (class 2604 OID 17316)
+-- Name: assistance_req id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.assistance_req ALTER COLUMN id SET DEFAULT nextval('public.assistance_req_id_seq'::regclass);
+
+
+--
+-- TOC entry 3245 (class 2604 OID 17325)
+-- Name: completed_doc_requests id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.completed_doc_requests ALTER COLUMN id SET DEFAULT nextval('public.completed_doc_requests_id_seq'::regclass);
+
+
+--
+-- TOC entry 3246 (class 2604 OID 17334)
+-- Name: docreq_queue id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.docreq_queue ALTER COLUMN id SET DEFAULT nextval('public.docreq_queue_id_seq'::regclass);
+
+
+--
+-- TOC entry 3247 (class 2604 OID 17341)
+-- Name: skmembers_queue id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.skmembers_queue ALTER COLUMN id SET DEFAULT nextval('public.skmembers_queue_id_seq'::regclass);
+
+
+--
+-- TOC entry 3249 (class 2604 OID 17351)
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- TOC entry 3418 (class 0 OID 17294)
+-- Dependencies: 218
+-- Data for Name: accepted_for_assistance; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.accepted_for_assistance (id, res_id, year_level, status) FROM stdin;
+1	2025002	Grade 8	t
+2	2025001	Grade 10	t
+3	2025003	Grade 8	t
+\.
+
+
+--
+-- TOC entry 3420 (class 0 OID 17304)
+-- Dependencies: 220
+-- Data for Name: accepted_members; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.accepted_members (id, members_id, res_id, status, archive) FROM stdin;
+1	100	2025001	t	No
+2	99	2025002	t	No
+3	98	2025003	t	No
+4	97	2025004	t	No
+5	96	2025005	t	No
+6	95	2025006	t	No
+7	94	2025007	t	No
+8	93	2025008	t	No
+9	92	2025009	t	No
+10	91	2025010	t	No
+11	90	2025011	t	No
+12	89	2025012	t	No
+13	88	2025013	t	No
+14	87	2025014	t	No
+15	86	2025015	t	No
+16	85	2025016	t	No
+17	84	2025017	t	No
+18	83	2025018	t	No
+19	82	2025019	t	No
+22	80	2025020	t	No
+\.
+
+
+--
+-- TOC entry 3422 (class 0 OID 17313)
+-- Dependencies: 222
+-- Data for Name: assistance_req; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.assistance_req (id, res_id, year_level, ccog_filename, cor_filename) FROM stdin;
+3	2025002	Grade 8	uploads/Bausas, Bea Alexa D._COR.pdf	uploads/Bausas, Bea Alexa D._COR.pdf
+6	2025001	Grade 10	uploads/Bausas, Bea Alexa D._COR.pdf	uploads/Bausas, Bea Alexa D._COR.pdf
+7	2025003	Grade 8	uploads/Bausas, Bea Alexa D._COR.pdf	uploads/Bausas, Bea Alexa D._COR.pdf
+\.
+
+
+--
+-- TOC entry 3424 (class 0 OID 17322)
+-- Dependencies: 224
+-- Data for Name: completed_doc_requests; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.completed_doc_requests (id, res_id, first_name, last_name, docs_filename) FROM stdin;
+4	2025003	Tracy	Brown	BAUSAS, Bea Alexa D. - PERFORMANCE TASK 1.pdf
+6	2025002	Heather	Lewis	BAUSAS, Bea Alexa D. - WRITTEN WORK NO 1.pdf
+\.
+
+
+--
+-- TOC entry 3426 (class 0 OID 17331)
+-- Dependencies: 226
+-- Data for Name: docreq_queue; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.docreq_queue (id, sk_id, year_level, purpose, docs_filename) FROM stdin;
+11	2025003	Grade 7	activity	Bausas_Script.pdf
+12	2025001	Grade 12	asf	Bausas_Script.pdf
+\.
+
+
+--
+-- TOC entry 3428 (class 0 OID 17338)
+-- Dependencies: 228
+-- Data for Name: skmembers_queue; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.skmembers_queue (id, first_name, middle_name, last_name, suffix, address, contact_num1, contact_num2, email, gender, age, blood_type, dob, religion, pwd, nationality, father_fullname, mother_fullname, contact_person, cp_relationship, cp_contactnum, cp_telephonenum, cp_address, status) FROM stdin;
+1	Justin	Joseph	Richards		847 Scorpio Road, Lamut, 8360 Sultan Kudarat	2147483647	2147483647	angela93@yahoo.com	Male	9	B-	2016-01-16	Iglesia ni Cristo	Yes	Filipino	Anthony King	Brittany Jones	Kari Sharp	Relative	2147483647	2147483647	4136 Jade Street, Tudela, 7049 Misamis Oriental	f
+2	Michael	Ryan	Walker	Jr.	8013 Juno Road Extension, Howard Village 4, Culaba, 7323 Tawi-Tawi	2147483647	2147483647	travisharvey@xzfoods.org	Male	10	AB-	2015-04-07	Born Again	No	Filipino	Shawn Davis	Sandra Ayala	Gerald Hobbs	Relative	2147483647	2147483647	Block 18 Lot 85 Hudson Village Phase 7, Uranus Street, Baliuag, 6696 Samar	f
+3	Stephanie	Connie	Nichols	Jr.	632 Avocado Street, Comet Subdivision, Guihulngan, 2412 Nueva Ecija	2147483647	2147483647	mary27@dkgservices.com.ph	Female	16	O+	2009-04-30	Islam	No	Filipino	Randy Savage	Elizabeth Pratt	Joseph Solis	Parent	2147483647	2147483647	Block 05 Lot 08 Evans Street, Campanilla Village, Santa, 5077 Guimaras	f
+4	Jose	Brian	Johnson	III	B16 L59 Palali Boulevard, Zamora Homes, Hadji Mohammad Ajul, 7521 Surigao del Sur	2147483647	2147483647	lmartinez@gmail.com	Male	15	A+	2009-11-29	Islam	No	Filipino	Danny Houston	Dawn Gray	Christopher Parker	Relative	2147483647	2147483647	2534 Hydra Road, Samal, 9395 Agusan del Sur	f
+5	Ashley	Charles	Haney		B07 L99 Oleander Village, Mayon Boulevard, Bagulin, 9850 Agusan del Norte	2147483647	2147483647	alvin91@gypv.com	Female	10	A-	2014-12-20	Roman Catholic	No	Filipino	Norman Vasquez	Taylor Lamb	Donna Wilcox	Guardian	2147483647	2147483647	29F Dean Apartment, 123 Zircon Avenue, T'Boli, 6069 Northern Samar	f
+6	Tiffany	Wendy	Terry		27th Floor Lambert Condominiums Tower 9, 9279 Saturn Street, Roxas, 4698 Apayao	2147483647	2147483647	robinzavala@hrqy.com.ph	Female	14	AB+	2011-01-19	Iglesia ni Cristo	No	Filipino	Timothy Brown	Michelle Adams	Tammie Reyes	Guardian	2147483647	2147483647	1338E Jacaranda Street, Tinglayan, 2295 Quirino	f
+7	Andre	Jessica	Burke		17th Floor Azalea Towers, 887 Jupiter Drive, San Esteban, 2081 Cagayan	2147483647	2147483647	andersonstephanie@pacificsummit.org.ph	Male	20	AB-	2004-10-06	Iglesia ni Cristo	No	Filipino	Benjamin Moore	Teresa Vasquez	Gloria Brooks	Sibling	2147483647	2147483647	9411-E 78th Drive, Bantayan, 6575 Eastern Samar	f
+8	Lori	Sandra	Dillon		5 Daugherty Extension, Ivana, 2535 Camarines Sur	2147483647	2147483647	darrellwalker@carterstar.org.ph	Female	12	B-	2012-12-23	Iglesia ni Cristo	Yes	Filipino	Alex Williams	Lori Mcdonald	Stephanie Davis	Sibling	2147483647	2147483647	B06 L04 Rodriguez Estates Phase 8, Agate Drive, Datu Unsay, 8640 Misamis Occidental	f
+9	Stephen	Kenneth	Washington	Jr.	Block 18 Lot 41 Jupiter Road, Nipa Cove Phase 6, San Guillermo, 6696 Cebu	2147483647	2147483647	colecaitlin@easternstate.com	Male	11	O+	2014-03-14	Roman Catholic	No	Filipino	Taylor Knight	Lori Levy	Laura Mullins	Guardian	2147483647	2147483647	Room 515 Ramirez Towers, 9727 Aquamarine Avenue, Tadian, 4241 Cavite	f
+10	Caitlin	Roy	Houston	Jr.	4300E Gumamela Highway, San Juan, 0978 Metro Manila	2147483647	2147483647	soliscarrie@metrogenesis.com.ph	Female	28	O+	1996-12-25	Iglesia ni Cristo	Yes	Filipino	Mark Lowe	Ashley Fisher	Katherine Garcia	Parent	2147483647	2147483647	Block 22 Lot 04 Melon Drive, Supa Subdivision, Munai, 4488 Catanduanes	f
+11	David	Courtney	Jones	Sr.	5781 Malinao Drive, Silang, 4602 Sorsogon	2147483647	2147483647	nicoletanner@zohomail.com	Male	8	O+	2017-04-29	Islam	No	Filipino	Jeffrey Martinez	Suzanne Morgan	Joseph Henry	Sibling	2147483647	2147483647	B22 L86 Atok Street, Hardin Cove 4, Corella, 8485 South Cotabato	f
+12	Alicia	Christopher	Campos		1173D Matumtum Street, Concepcion, 6056 Capiz	2147483647	2147483647	crawfordcrystal@msgproperties.com	Female	26	B-	1999-05-16	Born Again	Yes	Filipino	Steven Russell	Amanda Velez	Nathaniel Daniel	Guardian	2147483647	2147483647	3707 Unit I Collins Street, Gigmoto, 3184 Ifugao	f
+13	James	Kevin	Randall	III	6723 Bush Street, Cresta Subdivision, Malapatan, 9830 Compostela Valley	2147483647	2147483647	nathanielbass@adstrust.net.ph	Male	8	A+	2016-12-19	Born Again	No	Filipino	Jeff Scott	Lauren Sampson	Martin Jones	Sibling	2147483647	2147483647	B20 L67 52nd Road, Contreras Cove 8, Salug, 4602 Quezon	f
+14	Kathleen	Jared	Phillips	Jr.	Unit 715 Baticulin Apartments, 1727 Granada Road, Bataraza, 5546 Tarlac	2147483647	2147483647	xmontgomery@etg.net.ph	Female	7	B+	2017-07-01	Born Again	No	Filipino	Jeffrey Oliver	Sandra Case	Andrew Keith	Sibling	2147483647	2147483647	94 Simmons Road, Aquarius Village Phase 1, Amadeo, 8170 South Cotabato	f
+15	James	Daniel	Lewis		Block 12 Lot 60 Orion Street, Zodiac Grove Phase 6, General Salipada K. Pendatun, 5063 Cebu	2147483647	2147483647	cguerra@yahoo.com	Male	22	O+	2002-12-19	Iglesia ni Cristo	No	Filipino	Gregory Freeman	Susan Velez	Adam Jackson	Parent	2147483647	2147483647	7712 Onyx Road, Hagonoy, 6593 Guimaras	f
+16	Samuel	Austin	Mcconnell		Block 01 Lot 83 11th Road Extension, Brown Village 7, Pantar, 2082 Oriental Mindoro	2147483647	2147483647	christopher18@metrosummit.net.ph	Male	27	AB-	1998-04-15	Roman Catholic	No	Filipino	James Martin	Heather Johnson	Michael Graves	Relative	2147483647	2147483647	Room 4017 Holt Building Tower 9, 5928 Wheeler Street, Bugallon, 6576 Antique	f
+17	Veronica	Rodney	Williams		Room 530 Ortiz Apartment, 4559 Sagittarius Road, Aritao, 3651 Laguna	2147483647	2147483647	whiteheadlarry@mkgm.org.ph	Female	6	O+	2018-06-22	Baptist	Yes	Filipino	Caleb Stewart	Bridget Taylor	Laura Brandt	Sibling	2147483647	2147483647	5742 H Polaris Avenue, Cuyo, 1881 Nueva Vizcaya	f
+18	Paul	Ann	Zimmerman	Jr.	8862 Sardonyx Avenue, Aloguinsan, 3777 Abra	2147483647	2147483647	paulastewart@risingsilver.org.ph	Male	11	A+	2013-07-01	Born Again	No	Filipino	Brad Carson	Audrey Smith	Kimberly Williams	Relative	2147483647	2147483647	9547 Unit H Hibok-Hibok Street, Diadi, 3121 Cavite	f
+19	Joseph	Justin	Clark		Room 901 Keller Residences 8, 5423 Harmon Drive, Bagac, 6302 Capiz	2147483647	2147483647	moralesamy@bishopstate.ph	Male	16	B-	2008-09-24	Islam	Yes	Filipino	Mark Becker	Molly Rivera	Kelly Hammond	Sibling	2147483647	2147483647	6425 Unit G 92nd Boulevard, Kawayan, 8092 Davao Occidental	f
+20	Jason	Megan	Edwards	III	8091 Scorpio Street, Orion Village 9, Laguindingan, 9209 Sarangani	2147483647	2147483647	knelson@lkfinance.com.ph	Male	18	O-	2007-05-20	Baptist	No	Filipino	Timothy Ayala	Sonia Mason	Tracy Taylor	Sibling	2147483647	2147483647	2848 Pao Street, Marikina, 1555 Metro Manila	f
+21	Anna	Kim	Gonzalez	III	Room 1101 Palali Building, 7333 25th Boulevard, General Salipada K. Pendatun, 8175 South Cotabato	2147483647	2147483647	snelson@ndccompany.org	Female	11	O-	2014-04-18	Iglesia ni Cristo	No	Filipino	Dustin Hall	Nancy Cochran	Cynthia Newman	Guardian	2147483647	2147483647	4405 Caraballo Highway, Balindong, 2535 Bataan	f
+22	Emily	Jimmy	Miller		2237I Garnet Street, Laua-an, 4128 Nueva Vizcaya	2147483647	2147483647	stephanie21@yahoo.com	Female	16	AB-	2009-04-27	Iglesia ni Cristo	Yes	Filipino	Thomas Castro	Lisa Schmitt	Victor Yates	Parent	2147483647	2147483647	Block 04 Lot 82 Tabayoc Homes Phase 6, Bartlett Expressway, Tagbina, 8031 Agusan del Norte	f
+23	Donald	Michelle	Henderson	Jr.	49th Floor Gardner Residences 9, 8142 Makiling Avenue, Tabontabon, 4616 Tarlac	2147483647	2147483647	palmereric@zohomail.com	Male	12	A-	2013-01-31	Iglesia ni Cristo	Yes	Filipino	Joseph Patrick	Jennifer Hall	Joseph Ochoa	Sibling	2147483647	2147483647	8806-B Agate Avenue, Las Piñas, 0899 Metro Manila	f
+24	John	Sara	Mueller		5796 8th Road, Jalajala, 7072 Davao del Norte	2147483647	2147483647	malik92@pacificempire.org.ph	Male	10	AB+	2014-11-20	Roman Catholic	No	Filipino	Ronald Woods	Nicole Rich	Lindsay Roberts	Sibling	2147483647	2147483647	Room 905 Santan Place Tower 6, 7918 Hibok-Hibok Boulevard, Pasuquin, 3667 Tarlac	f
+25	Stephanie	Yvonne	Graham	III	5771 11th Road, Norala, 2403 Pangasinan	2147483647	2147483647	edwin01@zohomail.com	Female	10	AB-	2014-07-14	Roman Catholic	No	Filipino	Christopher Gutierrez	Kristy Sweeney	Tyler Blair	Parent	2147483647	2147483647	1184 Kanlaon Road, Pontevedra, 4839 Palawan	f
+26	Eric	Timothy	Coleman		2049 Lee Drive, Shariff Aguak, 5163 Bataan	2147483647	2147483647	david47@yahoo.com	Male	19	A+	2006-02-05	Born Again	No	Filipino	Patrick Thompson	Haley Myers	Anthony Maxwell	Sibling	2147483647	2147483647	964-J Onyx Drive Extension, Santol, 1877 Cavite	f
+27	Frank	Susan	Weaver	III	1771 H Pao Avenue, Benito Soliven, 9233 Davao del Norte	2147483647	2147483647	phillip33@perezunion.com.ph	Male	21	AB-	2003-12-15	Roman Catholic	Yes	Filipino	Kristopher Gibson	Alexis Hill	Shannon Payne	Parent	2147483647	2147483647	863 Garnet Avenue, Agate Subdivision Phase 5, Antequera, 4567 Zambales	f
+28	Susan	Herbert	George	III	3472 Onyx Street, Calumpang Subdivision, Ronda, 4823 Romblon	2147483647	2147483647	stephaniegibbs@pmgconstruction.org	Female	22	O-	2002-11-25	Born Again	No	Filipino	Evan Delacruz	Brittney Jones	James Goodwin	Relative	2147483647	2147483647	18F Robbins Suites, 2766 Palmer Street, Macabebe, 4426 La Union	f
+29	Eddie	Claire	Cohen		Room 710 Olsen Condominiums 5, 7427 Balimbing Avenue, Hilongos, 8607 Surigao del Norte	2147483647	2147483647	kevinrivera@zohomail.com	Male	28	A-	1996-10-26	Roman Catholic	No	Filipino	Brian Webster	Leslie Davis	James Rojas	Relative	2147483647	2147483647	Block 04 Lot 41 Capricorn Street, Lily Grove, Kalibo, 2777 Romblon	f
+30	Timothy	Lauren	Kelly		5983 Unit F Venus Street, Laur, 3866 Bulacan	2147483647	2147483647	thomas85@yahoo.com	Male	26	A+	1998-09-21	Iglesia ni Cristo	Yes	Filipino	Nicholas Kane	Casey Johnson	Jennifer Randall	Parent	2147483647	2147483647	6175I Opal Avenue, Cotabato City, 7257 Davao del Sur	f
+31	Kristy	Brian	Bailey	Jr.	30th Floor Smith Place Tower 7, 3587 88th Road, Pilar, 9411 Lanao del Sur	2147483647	2147483647	tvalentine@liservices.net	Female	22	B+	2003-05-05	Roman Catholic	No	Filipino	Jacob Coleman	Barbara Williams	Shelby Smith	Sibling	2147483647	2147483647	9567 A Jade Street, Pateros, 1417 Metro Manila	f
+32	Ryan	Christine	Jackson		4908 Unit F Juno Drive, Pasay, 1356 Metro Manila	2147483647	2147483647	sellersscott@sawyerliberty.org	Male	19	AB+	2006-02-22	Iglesia ni Cristo	No	Filipino	Michael Hanson	Jenna Bird	Tyler Golden	Parent	2147483647	2147483647	3903 Chico Avenue, Palm Village, Tubo, 4223 Rizal	f
+33	Krystal	Brenda	Zimmerman		B23 L43 Aranga Grove Phase 8, Caraballo Street, Dueñas, 9189 Surigao del Norte	2147483647	2147483647	haroldtaylor@yahoo.com	Female	19	A-	2006-05-14	Islam	No	Filipino	Barry Jones	Ashley Chavez	John Cortez	Guardian	2147483647	2147483647	4141I 92nd Drive, Quinapondan, 4261 Tarlac	f
+34	Paul	William	Pierce	Jr.	9623G 40th Road, Pagayawan, 5238 Ifugao	2147483647	2147483647	kelly16@ygcl.ph	Male	23	B+	2001-10-04	Roman Catholic	Yes	Filipino	Adam Black	Marilyn Jacobs	Melinda Jackson	Parent	2147483647	2147483647	4792 Libra Street, Mercury Village Phase 9, Pura, 6447 Northern Samar	f
+35	Brandon	Courtney	Moreno		9540 Caraballo Road, Mahayag, 3087 Laguna	2147483647	2147483647	andrea35@pmlbank.net.ph	Male	25	B-	2000-03-16	Roman Catholic	No	Filipino	Joseph Sparks	Amanda Ryan	Philip Payne	Parent	2147483647	2147483647	5703 Anderson Street, Bacuag, 6323 Aklan	f
+36	Nancy	Emily	Werner		Unit 202 Asparagus Towers 8, 9069 67th Street, Mapun, 2688 Benguet	2147483647	2147483647	toddpeterson@gmail.com	Female	13	A+	2011-12-12	Iglesia ni Cristo	No	Filipino	Kevin Mcmahon	Natalie Johnson	Phillip Valdez	Relative	2147483647	2147483647	Block 07 Lot 89 Barrett Subdivision Phase 4, Santan Avenue, Matanog, 2568 Occidental Mindoro	f
+37	Debra	Tiffany	Chan	III	Block 14 Lot 09 Dungon Subdivision 3, Fuller Avenue, Limay, 9494 Sultan Kudarat	2147483647	2147483647	richard02@yahoo.com	Female	25	B+	1999-11-14	Baptist	Yes	Filipino	Kyle Rodriguez	Kayla Daniel	Mary Anderson	Guardian	2147483647	2147483647	9434 Mayon Road, Iloilo City, 6330 Leyte	f
+38	Timothy	Bryan	Aguilar		3585E Sicaba Drive, Bagamanoc, 8782 Lanao del Sur	2147483647	2147483647	downsbrian@osed.ph	Male	12	B-	2012-11-10	Born Again	Yes	Filipino	Christopher Smith	Melissa Velazquez	Ashley Nichols	Parent	2147483647	2147483647	Block 09 Lot 56 Cypress Homes, Castaneda Service Road, Malimono, 2850 Quezon	f
+39	Crystal	Edward	Silva	III	5563 Gumamela Highway, Ilagan, 7011 Surigao del Norte	2147483647	2147483647	judyhansen@advancedgenesis.org.ph	Female	8	A+	2016-07-14	Iglesia ni Cristo	No	Filipino	Ricardo Lynn	Caroline Carrillo	Alisha Davis	Parent	2147483647	2147483647	5728 Avocado Expressway, Wang Subdivision Phase 4, San Juan, 0985 Metro Manila	f
+40	Jeffery	Austin	Vasquez	Jr.	5F Citrine Place, 8924 Amber Street, El Nido, 9177 South Cotabato	2147483647	2147483647	fhubbard@williamsstar.com	Male	9	B-	2015-07-10	Iglesia ni Cristo	Yes	Filipino	Brandon Johnson	Jamie Duncan	Cheyenne Martin	Guardian	2147483647	2147483647	Block 22 Lot 59 Guijo Road, Martin Homes Phase 4, Labason, 6031 Leyte	f
+\.
+
+
+--
+-- TOC entry 3430 (class 0 OID 17348)
+-- Dependencies: 230
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.users (id, username, password) FROM stdin;
+1	superadmin	12345
+\.
+
+
+--
+-- TOC entry 3443 (class 0 OID 0)
+-- Dependencies: 217
+-- Name: accepted_for_assistance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.accepted_for_assistance_id_seq', 1, false);
+
+
+--
+-- TOC entry 3444 (class 0 OID 0)
+-- Dependencies: 219
+-- Name: accepted_members_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.accepted_members_id_seq', 1, false);
+
+
+--
+-- TOC entry 3445 (class 0 OID 0)
+-- Dependencies: 221
+-- Name: assistance_req_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.assistance_req_id_seq', 1, false);
+
+
+--
+-- TOC entry 3446 (class 0 OID 0)
+-- Dependencies: 223
+-- Name: completed_doc_requests_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.completed_doc_requests_id_seq', 1, false);
+
+
+--
+-- TOC entry 3447 (class 0 OID 0)
+-- Dependencies: 225
+-- Name: docreq_queue_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.docreq_queue_id_seq', 1, false);
+
+
+--
+-- TOC entry 3448 (class 0 OID 0)
+-- Dependencies: 227
+-- Name: skmembers_queue_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.skmembers_queue_id_seq', 1, false);
+
+
+--
+-- TOC entry 3449 (class 0 OID 0)
+-- Dependencies: 229
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.users_id_seq', 1, false);
+
+
+--
+-- TOC entry 3251 (class 2606 OID 17300)
+-- Name: accepted_for_assistance accepted_for_assistance_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.accepted_for_assistance
+    ADD CONSTRAINT accepted_for_assistance_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3254 (class 2606 OID 17302)
+-- Name: accepted_for_assistance accepted_for_assistance_res_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.accepted_for_assistance
+    ADD CONSTRAINT accepted_for_assistance_res_id_key UNIQUE (res_id);
+
+
+--
+-- TOC entry 3257 (class 2606 OID 17311)
+-- Name: accepted_members accepted_members_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.accepted_members
+    ADD CONSTRAINT accepted_members_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3259 (class 2606 OID 17318)
+-- Name: assistance_req assistance_req_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.assistance_req
+    ADD CONSTRAINT assistance_req_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3262 (class 2606 OID 17320)
+-- Name: assistance_req assistance_req_res_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.assistance_req
+    ADD CONSTRAINT assistance_req_res_id_key UNIQUE (res_id);
+
+
+--
+-- TOC entry 3264 (class 2606 OID 17329)
+-- Name: completed_doc_requests completed_doc_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.completed_doc_requests
+    ADD CONSTRAINT completed_doc_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3266 (class 2606 OID 17336)
+-- Name: docreq_queue docreq_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.docreq_queue
+    ADD CONSTRAINT docreq_queue_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3269 (class 2606 OID 17346)
+-- Name: skmembers_queue skmembers_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.skmembers_queue
+    ADD CONSTRAINT skmembers_queue_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3271 (class 2606 OID 17353)
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3252 (class 1259 OID 17354)
+-- Name: accepted_for_assistance_res_id_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX accepted_for_assistance_res_id_idx ON public.accepted_for_assistance USING btree (res_id);
+
+
+--
+-- TOC entry 3255 (class 1259 OID 17356)
+-- Name: accepted_members_members_id_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX accepted_members_members_id_idx ON public.accepted_members USING btree (members_id);
+
+
+--
+-- TOC entry 3260 (class 1259 OID 17355)
+-- Name: assistance_req_res_id_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX assistance_req_res_id_idx ON public.assistance_req USING btree (res_id);
+
+
+--
+-- TOC entry 3267 (class 1259 OID 17357)
+-- Name: docreq_queue_sk_id_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX docreq_queue_sk_id_idx ON public.docreq_queue USING btree (sk_id);
+
+
+-- Completed on 2025-09-05 15:09:31
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict g6AioNHGg3xcbbkhVnydlohPImUN51XsanXFtKVYHKIQifl7j1xq8cLyfKPFnK5
+

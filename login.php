@@ -5,20 +5,30 @@ include 'database.php';
 $error = "";
 $success = "";
 
+// Check if the database connection is valid
+if (!$conn) {
+    die("Database connection error: " . pg_last_error());
+}
+error_log("Connection status: " . pg_connection_status($conn));
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = mysqli_real_escape_string($conn, $_POST['username']);
-    $password = mysqli_real_escape_string($conn, $_POST['password']);
+    $username = pg_escape_string($conn, $_POST['username']);
+    $password = pg_escape_string($conn, $_POST['password']);
 
     if (!empty($username) && !empty($password)) {
-        $query = "SELECT * FROM users WHERE username = '$username' AND password = '$password'";
-        $result = mysqli_query($conn, $query);
+        // Use pg_query_params for safer queries
+        $query = "SELECT * FROM users WHERE username = $1 AND password = $2";
+        $result = pg_query_params($conn, $query, array($username, $password));
 
-        if (mysqli_num_rows($result) === 1) {
-            $_SESSION['username'] = $username;
-            $success = "You logged in successfully.";
-            // Do NOT echo JS here anymore, we'll do it in the script below
+        if ($result) {
+            if (pg_num_rows($result) === 1) {
+                $_SESSION['username'] = $username;
+                $success = "You logged in successfully.";
+                // Do NOT echo JS here anymore, we'll do it in the script below
+            } else {
+                $error = "Invalid username or password.";
+            }
         } else {
-            $error = "Invalid username or password.";
+            $error = "Query error: " . pg_last_error($conn);
         }
     } else {
         $error = "All fields are required.";
@@ -77,8 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
-  <!-- Navbar -->
-  <?php include 'navbar.php'; ?>
 
   <main>
     <div class="card shadow">

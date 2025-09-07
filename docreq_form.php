@@ -3,49 +3,126 @@ session_start();
 // Include the database connection file
 include 'database.php';
 
+// Include PHPMailer files
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/PHPMailer.php';
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/SMTP.php';
+require __DIR__ . '/PHPMailer/PHPMailer-master/src/Exception.php';
+
+// Declare PHPMailer namespaces
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+// Initialize $res_id to avoid undefined variable warnings
+$res_id = null;
+
 // Handle Form Submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $res_id = $_POST['sk_id']; // This is actually the Resident ID entered by the user
-    $year_level = $_POST['year_level'];
-    $purpose = $_POST['purpose'];
+    $res_id = htmlspecialchars($_POST['sk_id']); // Sanitize input
+    $year_level = htmlspecialchars($_POST['year_level']);
+    $purpose = htmlspecialchars($_POST['purpose']);
 
     // File Upload
     $target_dir = "uploads/";
-    $filename = basename($_FILES["docs_filename"]["name"]);
-    $target_file = $target_dir . $filename;
-    move_uploaded_file($_FILES["docs_filename"]["tmp_name"], $target_file);
-
-    // Check if res_id exists in accepted_members
-    $check_sk = $conn->prepare("SELECT res_id FROM accepted_members WHERE res_id = ?");
-    $check_sk->bind_param("i", $res_id);
-    $check_sk->execute();
-    $result = $check_sk->get_result();
-
-    if ($result->num_rows > 0) {
-        // Insert Data if res_id exists
-        $stmt = $conn->prepare("INSERT INTO docreq_queue (sk_id, year_level, purpose, docs_filename) 
-                                VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("isss", $res_id, $year_level, $purpose, $filename);
-
-        if ($stmt->execute()) {
-            $_SESSION['message'] = ['type' => 'success', 'text' => 'Document Request Submitted Successfully!'];
-        } else {
-            $_SESSION['message'] = ['type' => 'error', 'text' => 'Error: ' . $stmt->error];
-        }
-        $stmt->close();
-    } else {
-        // Show error if res_id does not exist
-        $_SESSION['message'] = ['type' => 'error', 'text' => 'The Resident ID you entered does not exist. Please make a request for a resident ID first. Thank you!'];
+    if (!is_dir($target_dir)) {
+        mkdir($target_dir, 0777, true);
     }
 
-    $check_sk->close();
+    $filename = basename($_FILES["docs_filename"]["name"]);
+    $target_file = $target_dir . $filename;
+
+    // Validate file type and size
+    $allowed_types = ['pdf', 'doc', 'docx', 'jpg', 'png'];
+    $file_type = pathinfo($target_file, PATHINFO_EXTENSION);
+    if (!in_array($file_type, $allowed_types)) {
+        $_SESSION['message'] = ['type' => 'error', 'text' => 'Invalid file type. Allowed types: PDF, DOC, DOCX, JPG, PNG.'];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    }
+
+    if ($_FILES["docs_filename"]["size"] > 2 * 1024 * 1024) { // Limit file size to 2MB
+        $_SESSION['message'] = ['type' => 'error', 'text' => 'File size exceeds the 2MB limit.'];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    }
+
+    // Check if the file name already exists in the database
+    $check_file_sql = "SELECT * FROM docreq_queue WHERE docs_filename = $1";
+    $check_file_result = pg_query_params($conn, $check_file_sql, [$filename]);
+
+    if (pg_num_rows($check_file_result) > 0) {
+        $_SESSION['message'] = ['type' => 'error', 'text' => 'The file you are trying to upload has already been submitted. Please upload a different file.'];
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    }
+
+    if (move_uploaded_file($_FILES["docs_filename"]["tmp_name"], $target_file)) {
+        // Check if res_id exists in accepted_members
+        $check_sk_sql = "SELECT res_id FROM accepted_members WHERE res_id = $1";
+        $check_sk_result = pg_query_params($conn, $check_sk_sql, [$res_id]);
+
+        if (pg_num_rows($check_sk_result) > 0) {
+            // Insert Data if res_id exists
+            $insert_sql = "INSERT INTO docreq_queue (sk_id, year_level, purpose, docs_filename) 
+                           VALUES ($1, $2, $3, $4)";
+            $insert_result = pg_query_params($conn, $insert_sql, [$res_id, $year_level, $purpose, $filename]);
+
+            if ($insert_result) {
+                sendEmail($res_id, $conn); // Send email notification
+                $_SESSION['message'] = ['type' => 'success', 'text' => 'Document Request Submitted Successfully!'];
+            } else {
+                $_SESSION['message'] = ['type' => 'error', 'text' => 'Error: ' . pg_last_error($conn)];
+            }
+        } else {
+            // Show error if res_id does not exist
+            $_SESSION['message'] = ['type' => 'error', 'text' => 'The Resident ID you entered does not exist. Please make a request for a resident ID first. Thank you!'];
+        }
+    } else {
+        $_SESSION['message'] = ['type' => 'error', 'text' => 'File upload failed.'];
+    }
 
     // Redirect to clear POST data and show message
     header("Location: " . $_SERVER['PHP_SELF']);
     exit;
 }
 
-$conn->close();
+// Function to send email notification
+function sendEmail($res_id, $conn) {
+    $user_sql = "SELECT sq.email, sq.first_name
+                 FROM skmembers_queue sq
+                 JOIN accepted_members am ON am.members_id = sq.id
+                 WHERE am.res_id = $1";
+    $user_result = pg_query_params($conn, $user_sql, [$res_id]);
+    if ($user_info = pg_fetch_assoc($user_result)) {
+        $user_email = $user_info['email'];
+        $user_name = $user_info['first_name'];
+
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host       = 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'bmajck00@gmail.com';
+            $mail->Password   = 'psrk suml kthe lxak'; // your app password
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = 587;
+
+            $mail->setFrom('bmajck00@gmail.com', 'SK Barangay');
+            $mail->addAddress($user_email, $user_name);
+            $mail->isHTML(true);
+            $mail->Subject = 'Document Request Submitted';
+            $mail->Body    = "
+                <p>Dear $user_name,</p>
+                <p>Your document request has been <b>successfully submitted</b>.</p>
+                <p>Please wait for further notice regarding the status of your request.</p>
+                <br>
+                <p>Thank you,<br>SK Barangay Admin</p>
+            ";
+            $mail->send();
+        } catch (Exception $e) {
+            // Optionally log or handle the error
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -67,11 +144,7 @@ $conn->close();
             font-family: Arial, sans-serif;
             padding-top: 40px;
         }
-        .required {
-            color: red;
-            font-weight: bold;
-            margin-right: 4px;
-        }
+
         .container {
             max-width: 600px;
             margin-top: 60px;
@@ -80,6 +153,21 @@ $conn->close();
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            flex: 1; /* Ensures the container takes up available space */
+        }
+
+        footer {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        .required {
+            color: red;
+            font-weight: bold;
+            margin-right: 4px;
         }
         label {
             display: block;
@@ -112,11 +200,9 @@ $conn->close();
 <?php include 'navbar.php'; ?>
 
 <body>
-
 <div class="container">
     <h2 class="text-center mb-4" style="color: red;"><b>Document to Print Request Form</b></h2>
     <form id="requestForm" action="" method="POST" enctype="multipart/form-data">
-        
         <!-- Resident ID Input -->
         <div class="mb-3">
             <label for="sk_id"><span class="required">*</span>Resident ID</label>
@@ -166,8 +252,6 @@ $conn->close();
     </form>
 </div>
 
-<?php include 'footer.php'; ?>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
@@ -201,5 +285,6 @@ document.getElementById('requestForm').addEventListener('submit', function(e) {
 </script>
 <?php unset($_SESSION['message']); endif; ?>
 
+<?php include 'footer.php'; ?>
 </body>
 </html>

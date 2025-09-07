@@ -127,9 +127,6 @@
                         <li class="nav-item">
                             <a class="nav-link <?= $current_page == 'contact.php' ? 'active' : ''; ?>" href="#footer">CONTACT US</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?= $current_page == 'login.php' ? 'active' : ''; ?>" href="login.php">LOGIN</a>
-                        </li>
 
 
                         <!-- YOUTH MANAGE -->
@@ -157,7 +154,7 @@
                             </li>
 
 
-                            <?php elseif (in_array($current_page, ['accepted_assistance.php', 'pending_assistance.php', 'archive-assistance.php'])) : ?>
+                            <?php elseif (in_array($current_page, ['accepted_assistance.php', 'pending_assistance.php', 'archive-assistance.php', 'declined_assistance.php'])) : ?>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page == 'accepted_assistance.php' ? 'fw-bold text-primary' : ''; ?>" href="accepted_assistance.php">MASTERLIST</a>
                             </li>
@@ -166,6 +163,9 @@
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link <?= $current_page == 'archive-assistance.php' ? 'fw-bold text-primary' : ''; ?>" href="archive-assistance.php">ARCHIVE</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?= $current_page == 'declined_assistance.php' ? 'fw-bold text-primary' : ''; ?>" href="declined_assistance.php">DECLINED</a>
                             </li>
                         <?php endif; ?>
                         <li class="nav-item">

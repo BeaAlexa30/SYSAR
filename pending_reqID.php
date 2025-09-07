@@ -6,15 +6,24 @@ if (!isset($_SESSION['username'])) {
 }
 
 include('database.php');
-$sql = "SELECT id, first_name, middle_name, last_name, gender, age, email, status FROM skmembers_queue WHERE status = 0";
-$result = mysqli_query($conn, $sql);
+
+// Validate database connection
+if (!$conn) {
+    die("Database connection error: " . pg_last_error());
+}
+
+// Adjust query based on actual data in the `status` column
+$sql = "SELECT id, first_name, middle_name, last_name, gender, age, email, status 
+        FROM skmembers_queue 
+        WHERE status = '0' OR status = 'false'";
+$result = pg_query($conn, $sql);
 
 if (!$result) {
-    die("Error fetching data: " . mysqli_error($conn));
+    die("Error fetching data: " . pg_last_error($conn));
 }
 
 $members = [];
-while ($row = mysqli_fetch_assoc($result)) {
+while ($row = pg_fetch_assoc($result)) {
     $members[] = $row;
 }
 ?>

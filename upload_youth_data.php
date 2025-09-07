@@ -1,203 +1,143 @@
 <?php
-session_start();
-include('database.php');
+// Handle template download FIRST, before anything else!
+if (isset($_GET['download_template'])) {
+    $file = 'youth_data_template.csv';
+    if (file_exists($file)) {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="youth_data_template.csv"');
+        readfile($file);
+        exit;
+    } else {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Template file not found.']);
+        exit;
+    }
+}
 
-if (!isset($_SESSION['username'])) {
-    header('Location: login.php');
+session_start();
+header('Content-Type: application/json');
+
+// Error reporting for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+include('database.php'); // $conn = pg_connect(...)
+
+if (!$conn) {
+    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
-    $file = $_FILES['csv_file'];
-    $response = ['success' => false, 'message' => '', 'errors' => []];
-
-    // Check file type
-    $file_type = pathinfo($file['name'], PATHINFO_EXTENSION);
-    if ($file_type !== 'csv') {
-        $response['message'] = 'Please upload a CSV file.';
-        echo json_encode($response);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Debug: Output $_FILES and $_POST
+    if (empty($_FILES)) {
+        echo json_encode(['success' => false, 'message' => 'No files uploaded', 'debug' => $_FILES]);
+        exit;
+    }
+    if (!isset($_FILES['csv_file'])) {
+        echo json_encode(['success' => false, 'message' => 'csv_file not set', 'debug' => $_FILES]);
+        exit;
+    }
+    if ($_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'message' => 'Upload error: ' . $_FILES['csv_file']['error'], 'debug' => $_FILES]);
         exit;
     }
 
-    // Read CSV file
-    if (($handle = fopen($file['tmp_name'], "r")) !== FALSE) {
-        // Skip header row
-        $header = fgetcsv($handle);
-        
-        $success_count = 0;
-        $error_count = 0;
-        $row_number = 1;
-        $error_details = [];
-
-        while (($data = fgetcsv($handle)) !== FALSE) {
-            $row_number++;
-            $row_errors = [];
-            
-            // Map CSV columns to database fields
-            if (count($data) < 21) {
-                $row_errors[] = "Row $row_number: Expected 21 columns, got " . count($data) . " columns";
-                $error_count++;
-                $error_details[] = $row_errors;
-                continue;
-            }
-
-            $first_name = trim($data[0]);
-            $middle_name = trim($data[1]);
-            $last_name = trim($data[2]);
-            $suffix = trim($data[3]);
-            $address = trim($data[4]);
-            $contact_num1 = trim($data[5]);
-            $contact_num2 = trim($data[6]);
-            $email = trim($data[7]);
-            $gender = trim($data[8]);
-            $age = trim($data[9]);
-            $dob = trim($data[10]);
-            $PWD = trim($data[11]);
-            $nationality = trim($data[12]);
-            $religion = trim($data[13]);
-            $father_fullname = trim($data[14]);
-            $mother_fullname = trim($data[15]);
-            $contact_person = trim($data[16]);
-            $cp_relationship = trim($data[17]);
-            $cp_contactnum = trim($data[18]);
-            $cp_telephone = trim($data[19]);
-            $cp_address = trim($data[20]);
-
-            // Validate required fields
-            $required_fields = [
-                'First Name' => $first_name,
-                'Middle Name' => $middle_name,
-                'Last Name' => $last_name,
-                'Address' => $address,
-                'Contact Number 1' => $contact_num1,
-                'Email' => $email,
-                'Gender' => $gender,
-                'Date of Birth' => $dob,
-                'Age' => $age,
-                'Nationality' => $nationality,
-                'PWD Status' => $PWD,
-                'Religion' => $religion,
-                'Father Full Name' => $father_fullname,
-                'Mother Full Name' => $mother_fullname
-            ];
-
-            foreach ($required_fields as $field => $value) {
-                if (empty($value)) {
-                    $row_errors[] = "Row $row_number: $field is required";
-                }
-            }
-
-            // Validate email
-            if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $row_errors[] = "Row $row_number: Invalid email format";
-            }
-
-            // Validate age
-            if (!empty($age) && (!is_numeric($age) || $age <= 0)) {
-                $row_errors[] = "Row $row_number: Age must be a positive number";
-            }
-
-            // Validate contact numbers
-            if (!empty($contact_num1)) {
-                $contact_num1 = preg_replace('/[^0-9]/', '', $contact_num1);
-                if (strlen($contact_num1) < 10) {
-                    $row_errors[] = "Row $row_number: Contact Number 1 must have at least 10 digits";
-                }
-            }
-
-            if (!empty($contact_num2)) {
-                $contact_num2 = preg_replace('/[^0-9]/', '', $contact_num2);
-            }
-
-            if (!empty($cp_contactnum)) {
-                $cp_contactnum = preg_replace('/[^0-9]/', '', $cp_contactnum);
-                if (strlen($cp_contactnum) < 10) {
-                    $row_errors[] = "Row $row_number: Contact Person Number must have at least 10 digits";
-                }
-            }
-
-            if (!empty($cp_telephone)) {
-                $cp_telephone = preg_replace('/[^0-9]/', '', $cp_telephone);
-            }
-
-            // If there are any errors for this row, skip it
-            if (!empty($row_errors)) {
-                $error_count++;
-                $error_details = array_merge($error_details, $row_errors);
-                continue;
-            }
-
-            // Insert data into database
-            $sql = "INSERT INTO skmembers_queue (
-                        first_name, middle_name, last_name, suffix, address, contact_num1, contact_num2, 
-                        email, gender, age, dob, PWD, nationality, religion, father_fullname, mother_fullname, 
-                        contact_person, cp_relationship, cp_contactnum, cp_telephonenum, cp_address, status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
-
-            if ($stmt = mysqli_prepare($conn, $sql)) {
-                mysqli_stmt_bind_param(
-                    $stmt,
-                    "sssssssssssssssssssss",
-                    $first_name, $middle_name, $last_name, $suffix, $address, $contact_num1, $contact_num2,
-                    $email, $gender, $age, $dob, $PWD, $nationality, $religion, $father_fullname, $mother_fullname,
-                    $contact_person, $cp_relationship, $cp_contactnum, $cp_telephone, $cp_address
-                );
-
-                if (mysqli_stmt_execute($stmt)) {
-                    $success_count++;
-                } else {
-                    $error_count++;
-                    $row_errors[] = "Row $row_number: Database error - " . mysqli_stmt_error($stmt);
-                    $error_details = array_merge($error_details, $row_errors);
-                }
-                mysqli_stmt_close($stmt);
-            } else {
-                $error_count++;
-                $row_errors[] = "Row $row_number: Failed to prepare statement - " . mysqli_error($conn);
-                $error_details = array_merge($error_details, $row_errors);
-            }
-        }
-        fclose($handle);
-
-        $response['success'] = $success_count > 0;
-        $response['message'] = "Upload complete. Successfully imported $success_count records. Failed to import $error_count records.";
-        if (!empty($error_details)) {
-            $response['message'] .= "\n\nError Details:\n" . implode("\n", $error_details);
-        }
-    } else {
-        $response['message'] = 'Error reading CSV file.';
+    $file = $_FILES['csv_file']['tmp_name'];
+    if (!file_exists($file)) {
+        echo json_encode(['success' => false, 'message' => 'Uploaded file not found on server.']);
+        exit;
     }
 
-    echo json_encode($response);
+    $handle = fopen($file, 'r');
+    if (!$handle) {
+        echo json_encode(['success' => false, 'message' => 'Failed to open uploaded file.']);
+        exit;
+    }
+
+    // Read header
+    $header = fgetcsv($handle);
+    $expectedHeader = [
+        'First Name','Middle Name','Last Name','Suffix','Address','Contact Number 1','Contact Number 2','Email','Gender','Age','Date of Birth (YYYY-MM-DD)','PWD (Yes/No)','Nationality','Religion','Father Full Name','Mother Full Name','Contact Person','Contact Person Relationship','Contact Person Number','Contact Person Telephone','Contact Person Address'
+    ];
+    if (array_map('trim', $header) !== $expectedHeader) {
+        fclose($handle);
+        echo json_encode(['success' => false, 'message' => 'CSV header does not match template.', 'header' => $header]);
+        exit;
+    }
+
+    $inserted = 0;
+    $errors = [];
+    while (($row = fgetcsv($handle)) !== false) {
+        if (count($row) < count($expectedHeader)) {
+            $errors[] = "Incomplete row: " . implode(", ", $row);
+            continue;
+        }
+
+        // Map CSV columns to variables and handle empty values
+        $first_name = trim($row[0]) ?: 'none'; // 1st column
+        $middle_name = trim($row[1]) ?: 'none'; // 2nd column
+        $last_name = trim($row[2]) ?: 'none'; // 3rd column
+        $suffix = trim($row[3]) ?: 'none';
+        $address = trim($row[4]) ?: 'none';
+        $contact_num1 = trim($row[5]) ?: null; // Allow NULL for integers
+        $contact_num2 = trim($row[6]) ?: null; // Allow NULL for integers
+        $email = trim($row[7]) ?: 'none'; // 8th column
+        $gender = trim($row[8]) ?: 'none';
+        $age = trim($row[9]) ?: null; // Allow NULL for integers
+        $dob = trim($row[10]) ?: 'none';
+        $pwd = strtolower(trim($row[11])) === 'yes' ? 'Yes' : 'No';
+        $nationality = trim($row[12]) ?: 'none';
+        $religion = trim($row[13]) ?: 'none';
+        $father_fullname = trim($row[14]) ?: 'none';
+        $mother_fullname = trim($row[15]) ?: 'none';
+        $contact_person = trim($row[16]) ?: 'none';
+        $cp_relationship = trim($row[17]) ?: 'none';
+        $cp_contactnum = trim($row[18]) ?: null; // Allow NULL for integers
+        $cp_tel = trim($row[19]) ?: null; // Allow NULL for integers
+        $cp_address = trim($row[20]) ?: 'none';
+
+        // Check for duplicates in the database based only on first_name and last_name
+        $check_sql = "SELECT COUNT(*) FROM skmembers_queue WHERE first_name = $1 AND last_name = $2";
+        $check_params = [$first_name, $last_name];
+        $check_result = pg_query_params($conn, $check_sql, $check_params);
+
+        if ($check_result) {
+            $count = pg_fetch_result($check_result, 0, 0);
+            if ($count > 0) {
+                $errors[] = "Duplicate record: " . htmlspecialchars($first_name . " " . $last_name);
+                continue;
+            }
+        } else {
+            $errors[] = "Failed to check duplicates for: " . htmlspecialchars($first_name . " " . $last_name) . " (" . pg_last_error($conn) . ")";
+            continue;
+        }
+
+        // Insert into skmembers_queue (adjust columns as needed)
+        $sql = "INSERT INTO skmembers_queue 
+            (first_name, middle_name, last_name, suffix, address, contact_num1, contact_num2, email, gender, age, dob, pwd, nationality, religion, father_fullname, mother_fullname, contact_person, cp_relationship, cp_contactnum, cp_telephonenum, cp_address, status)
+            VALUES
+            ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,0)";
+        $params = [
+            $first_name, $middle_name, $last_name, $suffix, $address, $contact_num1, $contact_num2, $email, $gender, $age, $dob, $pwd, $nationality, $religion, $father_fullname, $mother_fullname, $contact_person, $cp_relationship, $cp_contactnum, $cp_tel, $cp_address
+        ];
+        $result = pg_query_params($conn, $sql, $params);
+        if ($result) {
+            $inserted++;
+        } else {
+            $errors[] = "Failed to insert: " . htmlspecialchars($first_name . " " . $last_name) . " (" . pg_last_error($conn) . ")";
+        }
+    }
+    fclose($handle);
+
+    if ($inserted > 0) {
+        echo json_encode(['success' => true, 'message' => "Successfully uploaded $inserted record(s)." . (count($errors) ? " Some rows failed." : "")]);
+    } else {
+        echo json_encode(['success' => false, 'message' => "No records uploaded. " . implode("; ", $errors)]);
+    }
     exit;
 }
 
-// Return template CSV
-if (isset($_GET['download_template'])) {
-    header('Content-Type: text/csv');
-    header('Content-Disposition: attachment; filename="youth_data_template.csv"');
-    
-    $output = fopen('php://output', 'w');
-    
-    // Write headers
-    fputcsv($output, [
-        'First Name', 'Middle Name', 'Last Name', 'Suffix', 'Address', 
-        'Contact Number 1', 'Contact Number 2', 'Email', 'Gender', 'Age',
-        'Date of Birth (YYYY-MM-DD)', 'PWD (Yes/No)', 'Nationality', 'Religion',
-        'Father Full Name', 'Mother Full Name', 'Contact Person',
-        'Contact Person Relationship', 'Contact Person Number', 'Contact Person Telephone', 'Contact Person Address'
-    ]);
-    
-    // Write sample data
-    fputcsv($output, [
-        'Juan', 'Santos', 'Dela Cruz', 'Jr', '123 Main St, Manila',
-        '9123456789', '9987654321', 'juan@email.com', 'Male', '18',
-        '2006-01-01', 'No', 'Filipino', 'Catholic',
-        'Pedro Dela Cruz', 'Maria Dela Cruz', 'Pedro Dela Cruz',
-        'Father', '9123456789', '8123456', '123 Main St, Manila'
-    ]);
-    
-    fclose($output);
-    exit;
-}
-?> 
+echo json_encode(['success' => false, 'message' => 'Invalid request.']);
+exit;

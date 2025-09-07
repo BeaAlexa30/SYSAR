@@ -1,24 +1,22 @@
 <?php
 include('database.php');
 
+// Validate database connection
+if (!$conn) {
+    die("Database connection error: " . pg_last_error());
+}
+
 if (isset($_GET['action']) && $_GET['action'] === 'archive' && isset($_GET['id'])) {
     $id = intval($_GET['id']);
 
-    $sql = "UPDATE skmembers_queue SET archive = 'Yes' WHERE id = ?";
-    $stmt = mysqli_prepare($conn, $sql);
+    $sql = "UPDATE skmembers_queue SET archive = 'Yes' WHERE id = $1";
+    $result = pg_query_params($conn, $sql, [$id]);
 
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "i", $id);
-        if (mysqli_stmt_execute($stmt)) {
-            $_SESSION['message'] = "Resident successfully archived.";
-            $_SESSION['alertType'] = "success";
-        } else {
-            $_SESSION['message'] = "Error archiving resident: " . mysqli_stmt_error($stmt);
-            $_SESSION['alertType'] = "danger";
-        }
-        mysqli_stmt_close($stmt);
+    if ($result) {
+        $_SESSION['message'] = "Resident successfully archived.";
+        $_SESSION['alertType'] = "success";
     } else {
-        $_SESSION['message'] = "Error preparing archive statement.";
+        $_SESSION['message'] = "Error archiving resident: " . pg_last_error($conn);
         $_SESSION['alertType'] = "danger";
     }
 

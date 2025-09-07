@@ -118,7 +118,10 @@ include 'database.php';
 
     <main>
         <div class="container mt-5">
-            <h1 class="text-center" style="color: black;"><b>Welcome, <?php echo $_SESSION['username']; ?>!</b></h1>
+            <h1 class="text-center" style="background-color: rgba(0, 0, 0, 0.5); color: white; padding: 10px; border-radius: 10px;">
+            <b>Welcome, <?php echo $_SESSION['username']; ?>!</b>
+            </h1>
+
 
             <!-- Updated Cards for different options -->
             <div class="card-container">
@@ -149,22 +152,24 @@ include 'database.php';
 
     <?php
     // Query for age distribution
-    $age_sql = "SELECT age, COUNT(*) as count 
+    $age_sql = "SELECT q.age, COUNT(*) as count 
                 FROM skmembers_queue q 
                 JOIN accepted_members a ON q.id = a.members_id 
                 WHERE a.archive = 'No' 
-                GROUP BY age 
-                ORDER BY age";
-    $age_result = $conn->query($age_sql);
+                GROUP BY q.age 
+                ORDER BY q.age";
+    $age_result = pg_query($conn, $age_sql);
     $age_data = [];
-    while ($row = $age_result->fetch_assoc()) {
-        $age_data[] = [(int)$row['age'], (int)$row['count']];
+    if ($age_result) {
+        while ($row = pg_fetch_assoc($age_result)) {
+            $age_data[] = [(int)$row['age'], (int)$row['count']];
+        }
     }
 
     // Query for year level distribution
     $year_sql = "SELECT year_level, COUNT(*) as count 
                  FROM accepted_for_assistance 
-                 WHERE status = 1 
+                 WHERE status = TRUE 
                  GROUP BY year_level 
                  ORDER BY CASE 
                     WHEN year_level LIKE 'Kinder%' THEN 1
@@ -172,23 +177,27 @@ include 'database.php';
                     WHEN year_level LIKE '%College%' THEN 3
                     ELSE 4
                  END, year_level";
-    $year_result = $conn->query($year_sql);
+    $year_result = pg_query($conn, $year_sql);
     $year_data = [];
-    while ($row = $year_result->fetch_assoc()) {
-        $year_data[] = [$row['year_level'], (int)$row['count']];
+    if ($year_result) {
+        while ($row = pg_fetch_assoc($year_result)) {
+            $year_data[] = ['name' => $row['year_level'], 'y' => (int)$row['count']];
+        }
     }
 
     // Query for PWD distribution
-    $pwd_sql = "SELECT PWD, COUNT(*) as count 
+    $pwd_sql = "SELECT q.PWD, COUNT(*) as count 
                 FROM skmembers_queue q 
                 JOIN accepted_members a ON q.id = a.members_id 
                 WHERE a.archive = 'No' 
-                GROUP BY PWD";
-    $pwd_result = $conn->query($pwd_sql);
+                GROUP BY q.PWD";
+    $pwd_result = pg_query($conn, $pwd_sql);
     $pwd_data = [];
-    while ($row = $pwd_result->fetch_assoc()) {
-        $status = $row['PWD'] === 'Yes' ? 'PWD' : 'Non-PWD';
-        $pwd_data[] = [$status, (int)$row['count']];
+    if ($pwd_result) {
+        while ($row = pg_fetch_assoc($pwd_result)) {
+            $status = $row['pwd'] === 'Yes' ? 'PWD' : 'Non-PWD';
+            $pwd_data[] = ['name' => $status, 'y' => (int)$row['count']];
+        }
     }
     ?>
 
@@ -289,6 +298,15 @@ include 'database.php';
             }]
         });
     </script>
+
+    <?php
+    // Debug: Output the PHP arrays as JSON
+    echo "<!--";
+    echo "age_data: " . json_encode($age_data) . "\n";
+    echo "year_data: " . json_encode($year_data) . "\n";
+    echo "pwd_data: " . json_encode($pwd_data) . "\n";
+    echo "-->";
+    ?>
 
     <?php include 'footer.php'; ?>
 
